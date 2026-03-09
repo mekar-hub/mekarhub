@@ -19,7 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/kisah/:slug" element={<FigureArticle />} />
-          <Route path="/form-calon-figur" element={<FormCalonFigur />} />
+          <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
