@@ -1,4 +1,4 @@
-import logoWhite from "@/assets/Logo_Mekar_Hub_1_Putih.png";
+import { Link } from "react-router-dom";
 
 const CTASection = () => {
   return (
@@ -11,15 +11,13 @@ const CTASection = () => {
         <p className="text-primary-foreground/70 text-lg mb-10 max-w-lg font-light leading-relaxed">
           Mari bergabung dalam ekosistem narasi yang membangun warisan digital bermakna.
         </p>
-        <a
-          href="https://wa.me/6281334841094"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/form-calon-figur"
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-md font-semibold text-base hover:bg-primary/90 transition-colors"
         >
-          Mulai Kolaborasi
+          Form Calon Figur
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
+        </Link>
       </div>
     </section>
   );

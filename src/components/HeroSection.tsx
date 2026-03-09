@@ -2,7 +2,7 @@ import heroBg from "@/assets/hero-bg.jpg";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-start overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <img src={heroBg} alt="" className="w-full h-full object-cover" />
@@ -10,14 +10,14 @@ const HeroSection = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 w-full py-32">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 w-full py-32 text-center">
         <p className="text-primary-foreground/70 text-sm font-medium tracking-[0.3em] uppercase mb-4">
           Digital Legacy Hub
         </p>
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-primary-foreground leading-[1.1] mb-6">
           tumbuh &<br />terhubung
         </h1>
-        <p className="text-primary-foreground/80 text-lg md:text-xl max-w-xl mb-10 font-light leading-relaxed">
+        <p className="text-primary-foreground/80 text-lg md:text-xl max-w-xl mx-auto mb-10 font-light leading-relaxed">
           Ruang narasi bagi manusia yang tumbuh dengan integritas
         </p>
         <a
