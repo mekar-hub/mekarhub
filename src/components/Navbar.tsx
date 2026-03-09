@@ -16,10 +16,10 @@ const Navbar = () => {
           <a href="/#philosophy" className="text-muted-foreground hover:text-foreground transition-colors">Filosofi</a>
           <a href="/#archive" className="text-muted-foreground hover:text-foreground transition-colors">Kisah Mereka</a>
           <Link
-            to="/form-calon-figur"
+            to="/kolaborasi-kisah"
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            Form Calon Figur
+            Kolaborasi Kisah
           </Link>
         </div>
         {/* Mobile toggle */}
