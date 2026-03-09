@@ -1,28 +1,26 @@
-import logoWhite from "@/assets/Logo_Mekar_Hub_1_Putih.png";
 import logo from "@/assets/Logo_Mekar_Hub_1.png";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b">
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
-        <a href="/">
-          <img src={logo} alt="Mekarhub" className="h-10" />
-        </a>
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
+        <Link to="/">
+          <img src={logo} alt="Mekarhub" className="h-14" />
+        </Link>
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-          <a href="#philosophy" className="text-muted-foreground hover:text-foreground transition-colors">Filosofi</a>
-          <a href="#archive" className="text-muted-foreground hover:text-foreground transition-colors">Pustaka Figur</a>
-          <a
-            href="https://wa.me/6281334841094"
-            target="_blank"
-            rel="noopener noreferrer"
+          <a href="/#philosophy" className="text-muted-foreground hover:text-foreground transition-colors">Filosofi</a>
+          <a href="/#archive" className="text-muted-foreground hover:text-foreground transition-colors">Kisah Mereka</a>
+          <Link
+            to="/form-calon-figur"
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            Hubungi Kami
-          </a>
+            Form Calon Figur
+          </Link>
         </div>
         {/* Mobile toggle */}
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground" aria-label="Toggle menu">
@@ -33,16 +31,15 @@ const Navbar = () => {
       </div>
       {open && (
         <div className="md:hidden bg-background border-t px-6 py-4 flex flex-col gap-4 text-sm font-medium">
-          <a href="#philosophy" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Filosofi</a>
-          <a href="#archive" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Pustaka Figur</a>
-          <a
-            href="https://wa.me/6281334841094"
-            target="_blank"
-            rel="noopener noreferrer"
+          <a href="/#philosophy" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Filosofi</a>
+          <a href="/#archive" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Kisah Mereka</a>
+          <Link
+            to="/form-calon-figur"
+            onClick={() => setOpen(false)}
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold text-center"
           >
-            Hubungi Kami
-          </a>
+            Form Calon Figur
+          </Link>
         </div>
       )}
     </nav>
