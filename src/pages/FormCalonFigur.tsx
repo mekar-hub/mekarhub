@@ -40,7 +40,7 @@ const FormCalonFigur = () => {
       <section className="pt-28 pb-24 bg-background">
         <div className="max-w-2xl mx-auto px-6">
           <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase mb-4">Bergabung</p>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Form Calon Figur</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Kolaborasi Kisah</h1>
           <p className="text-muted-foreground mb-10 leading-relaxed">
             Punya kisah inspiratif yang layak diceritakan? Isi formulir di bawah dan tim Mekarhub akan menghubungi Anda.
           </p>

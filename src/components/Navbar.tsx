@@ -34,11 +34,11 @@ const Navbar = () => {
           <a href="/#philosophy" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Filosofi</a>
           <a href="/#archive" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Kisah Mereka</a>
           <Link
-            to="/form-calon-figur"
+            to="/kolaborasi-kisah"
             onClick={() => setOpen(false)}
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold text-center"
           >
-            Form Calon Figur
+            Kolaborasi Kisah
           </Link>
         </div>
       )}

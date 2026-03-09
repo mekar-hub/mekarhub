@@ -21,12 +21,10 @@ const HeroSection = () => {
           Ruang narasi bagi manusia yang tumbuh dengan integritas
         </p>
         <a
-          href="https://wa.me/6281334841094"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/kolaborasi-kisah"
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-md font-semibold text-base hover:bg-primary/90 transition-colors"
         >
-          Hubungi Kami
+          Kolaborasi Kisah
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
       </div>
