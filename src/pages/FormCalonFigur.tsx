@@ -19,19 +19,35 @@ const FormCalonFigur = () => {
     cerita: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nama.trim() || !form.kategori || !form.cerita.trim()) {
       toast({ title: "Data belum lengkap", description: "Mohon isi semua field yang wajib.", variant: "destructive" });
       return;
     }
     setLoading(true);
-    // Simulate submission
-    setTimeout(() => {
-      setLoading(false);
-      toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih telah berbagi kisah. Tim kami akan segera meninjau." });
+    try {
+      await fetch(
+        "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec",
+        {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nama: form.nama.trim(),
+            kategori: form.kategori,
+            linkProfil: form.linkProfil.trim(),
+            cerita: form.cerita.trim(),
+          }),
+        }
+      );
+      toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih, kisahmu sudah kami terima!" });
       setForm({ nama: "", kategori: "", linkProfil: "", cerita: "" });
-    }, 1000);
+    } catch {
+      toast({ title: "Gagal Mengirim", description: "Terjadi kesalahan. Silakan coba lagi.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
