@@ -35,13 +35,15 @@ const Navbar = () => {
         <div className="md:hidden bg-background border-t px-6 py-4 flex flex-col gap-4 text-sm font-medium">
           <a href="/#philosophy" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Filosofi</a>
           <a href="/#archive" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Kisah Mereka</a>
-          <Link
-            to="/kolaborasi-kisah"
+          <a
+            href="https://wa.me/6281334841094"
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={() => setOpen(false)}
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold text-center"
           >
-            Kolaborasi Kisah
-          </Link>
+            Hubungi Kami
+          </a>
         </div>
       )}
     </nav>
