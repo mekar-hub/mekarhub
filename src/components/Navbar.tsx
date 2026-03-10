@@ -36,7 +36,7 @@ const Navbar = () => {
           <a href="/#philosophy" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Filosofi</a>
           <a href="/#archive" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">Kisah Mereka</a>
           <a
-            href="https://wa.me/6281334841094"
+            href="https://wa.me/6281334841094?text=Halo%20Mekarhub%2C%20saya%20tertarik%20untuk%20mengetahui%20lebih%20lanjut%20tentang%20layanan%20Anda.%20Boleh%20dibantu%3F"
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setOpen(false)}
