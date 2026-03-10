@@ -15,12 +15,14 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
           <a href="/#philosophy" className="text-muted-foreground hover:text-foreground transition-colors">Filosofi</a>
           <a href="/#archive" className="text-muted-foreground hover:text-foreground transition-colors">Kisah Mereka</a>
-          <Link
-            to="/kolaborasi-kisah"
+          <a
+            href="https://wa.me/6281334841094"
+            target="_blank"
+            rel="noopener noreferrer"
             className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            Kolaborasi Kisah
-          </Link>
+            Hubungi Kami
+          </a>
         </div>
         {/* Mobile toggle */}
         <button onClick={() => setOpen(!open)} className="md:hidden text-foreground" aria-label="Toggle menu">
