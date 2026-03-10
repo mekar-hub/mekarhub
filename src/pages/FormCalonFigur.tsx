@@ -27,18 +27,18 @@ const FormCalonFigur = () => {
     }
     setLoading(true);
     try {
+      const formData = new URLSearchParams();
+      formData.append("nama", form.nama.trim());
+      formData.append("kategori", form.kategori);
+      formData.append("linkProfil", form.linkProfil.trim());
+      formData.append("cerita", form.cerita.trim());
+
       await fetch(
         "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec",
         {
           method: "POST",
           mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nama: form.nama.trim(),
-            kategori: form.kategori,
-            linkProfil: form.linkProfil.trim(),
-            cerita: form.cerita.trim(),
-          }),
+          body: formData,
         }
       );
       toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih, kisahmu sudah kami terima!" });
