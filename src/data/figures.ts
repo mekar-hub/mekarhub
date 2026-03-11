@@ -1,16 +1,123 @@
+import Papa from "papaparse";
+
+// URL CSV dari Google Sheets (Ganti dengan URL Publish to Web Anda)
+// Contoh format: "https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv"
+export const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
+
 export interface Figure {
   id: number;
   name: string;
   title: string;
-  category: "Entrepreneur" | "Social Leader" | "Educator";
+  category: "Entrepreneur" | "Social Leader" | "Educator" | string;
   socialLink: string;
   featured: boolean;
   slug: string;
   story: string;
   publishedDate: string;
+  imageUrl?: string;
 }
 
-export const figures: Figure[] = [
+// Helper: sync conversion for Google Drive links
+const convertDriveLink = (url: string): string => {
+  const driveIdMatch = url.match(/(?:\/file\/d\/|id=)([^\/\?\&]+)/);
+  if (url.includes("drive.google.com") && driveIdMatch) {
+    return `https://lh3.googleusercontent.com/d/${driveIdMatch[1]}=s1000`;
+  }
+  return url.trim();
+};
+
+// Helper: async resolver for ImgBB viewer links (e.g. https://ibb.co.com/XXXX)
+// It fetches the page via a CORS proxy and extracts the og:image direct link
+const resolveImgBBLink = async (url: string): Promise<string> => {
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    const data = await res.json();
+    const html: string = data.contents || "";
+    // Extract og:image from the HTML
+    const match = html.match(/property="og:image"\s+content="([^"]+)"/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    // Fallback: try image src from viewer container
+    const imgMatch = html.match(/id="image-viewer-container"[^>]*>.*?<img src="([^"]+)"/s);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1];
+    }
+  } catch (e) {
+    console.warn("Gagal resolve ImgBB link:", url, e);
+  }
+  return url.trim(); // Return as-is if resolution fails
+};
+
+// Async helper: converts any share/viewer URL to a direct image URL
+const resolveImageUrl = async (url: string = ""): Promise<string> => {
+  if (!url || url.trim() === "") return "";
+  const trimmed = url.trim();
+  
+  // Google Drive – sync conversion
+  if (trimmed.includes("drive.google.com")) {
+    return convertDriveLink(trimmed);
+  }
+
+  // ImgBB viewer link – needs async resolution
+  if (trimmed.includes("ibb.co") && !trimmed.includes("i.ibb.co")) {
+    return resolveImgBBLink(trimmed);
+  }
+
+  // Already a direct image link (ends with .jpg, .png, .webp, etc.) – use as-is
+  return trimmed;
+};
+
+// Function to fetch and parse from Google Sheets CSV
+export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
+  // Add a timestamp to bypass browser caching of the CSV data
+  const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
+  
+  return new Promise((resolve, reject) => {
+    Papa.parse<any>(dynamicUrl, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
+      complete: async (results) => {
+        try {
+          const rawFigures = results.data.map((row: any) => ({
+            id: Number(row.id),
+            name: row.name || "",
+            title: row.title || "",
+            category: row.category || "Entrepreneur",
+            socialLink: row.socialLink || "",
+            featured: String(row.featured).toLowerCase() === "true",
+            slug: row.slug || "",
+            story: row.story || "",
+            publishedDate: row.publishedDate || "",
+            imageUrl: row.imageUrl || "",
+          }));
+
+          // Resolve all image URLs concurrently (handles Drive + ImgBB viewer links)
+          const resolvedFigures: Figure[] = await Promise.all(
+            rawFigures.map(async (fig: any) => ({
+              ...fig,
+              imageUrl: await resolveImageUrl(fig.imageUrl) || undefined,
+            }))
+          );
+
+          console.log("Data berhasil diambil dari Google Sheets:", resolvedFigures);
+          resolve(resolvedFigures);
+        } catch (error) {
+          reject(error);
+        }
+      },
+      error: (error: any) => {
+        reject(error);
+      },
+    });
+  });
+};
+
+export const defaultFigures: Figure[] = [
+  // --- DEFAULT DATA (Fallback) ---
   // Featured 6
   { id: 1, name: "Didiet Rasmana", title: "Owner Toko Buku Singosari", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "didiet-rasmana", story: "Didiet Rasmana membangun Toko Buku Singosari dari nol, menjadikannya ruang literasi yang hidup di tengah komunitas. Dengan dedikasi tinggi, ia membuktikan bahwa bisnis buku masih relevan di era digital. Toko ini bukan sekadar tempat jual beli, melainkan pusat diskusi dan pertukaran ide bagi warga sekitar.", publishedDate: "2025-01-15" },
   { id: 2, name: "Yanti Dhaniaty", title: "Owner Sambel Shamila", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "yanti-dhaniaty", story: "Yanti Dhaniaty mengubah resep sambal warisan keluarga menjadi brand Sambel Shamila yang dikenal luas. Perjalanannya dimulai dari dapur rumah, kini produknya menjangkau berbagai kota. Ia membuktikan bahwa ketekunan dan cinta terhadap kuliner lokal bisa menjadi fondasi bisnis yang berkelanjutan.", publishedDate: "2025-02-10" },

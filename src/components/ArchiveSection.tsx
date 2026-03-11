@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { figures, type Figure } from "@/data/figures";
+import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL } from "@/data/figures";
 
 const categories = ["All Figures", "Entrepreneur", "Social Leader", "Educator"] as const;
 
@@ -11,6 +11,7 @@ const FigureCard = ({ figure }: { figure: Figure }) => {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const [error, setError] = useState(false);
 
   return (
     <Link
@@ -19,11 +20,20 @@ const FigureCard = ({ figure }: { figure: Figure }) => {
     >
       {/* Portrait placeholder */}
       <div className="relative aspect-[3/4] bg-secondary overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-105">
-          <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
-            <span className="text-2xl font-bold text-muted-foreground">{initials}</span>
+        {figure.imageUrl && !error ? (
+          <img 
+            src={figure.imageUrl} 
+            alt={figure.name} 
+            onError={() => setError(true)}
+            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-105">
+            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-2xl font-bold text-muted-foreground">{initials}</span>
+            </div>
           </div>
-        </div>
+        )}
         {/* Category badge */}
         <div className="absolute top-3 left-3">
           <span className="bg-primary/90 text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
@@ -43,6 +53,26 @@ const FigureCard = ({ figure }: { figure: Figure }) => {
 const ArchiveSection = () => {
   const [activeFilter, setActiveFilter] = useState<string>("All Figures");
   const [showAll, setShowAll] = useState(false);
+  const [figures, setFigures] = useState<Figure[]>(defaultFigures);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!SHEET_CSV_URL) return;
+
+    setIsLoading(true);
+    fetchFiguresFromSheet(SHEET_CSV_URL)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setFigures(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Gagal mengambil data dari Google Sheets:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
   const filtered = activeFilter === "All Figures"
     ? figures
@@ -58,6 +88,10 @@ const ArchiveSection = () => {
       <div className="max-w-7xl mx-auto px-6">
         <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase mb-4">Kisah Mereka</p>
         <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-10 leading-tight">The Archive</h2>
+
+        {isLoading && (
+          <p className="text-muted-foreground mb-4">Memuat data dari Google Sheets...</p>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-12">

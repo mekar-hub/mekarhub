@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { figures } from "@/data/figures";
+import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL } from "@/data/figures";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -7,7 +8,39 @@ import { id } from "date-fns/locale";
 
 const FigureArticle = () => {
   const { slug } = useParams<{ slug: string }>();
-  const figure = figures.find((f) => f.slug === slug);
+  const [figure, setFigure] = useState<Figure | null>(
+    defaultFigures.find((f) => f.slug === slug) || null
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!SHEET_CSV_URL) return;
+    
+    setIsLoading(true);
+    fetchFiguresFromSheet(SHEET_CSV_URL)
+      .then((data) => {
+        const found = data.find((f) => f.slug === slug);
+        if (found) {
+          setFigure(found);
+          setImgError(false); // Reset error if we get new data
+        }
+      })
+      .catch((err) => console.error("Gagal mengambil data dari Google Sheets:", err))
+      .finally(() => setIsLoading(false));
+  }, [slug]);
+
+  if (isLoading && !figure) {
+    return (
+      <main className="min-h-screen">
+        <Navbar />
+        <div className="pt-32 pb-24 text-center max-w-4xl mx-auto px-6">
+          <p className="text-muted-foreground animate-pulse">Memuat artikel...</p>
+        </div>
+        <Footer />
+      </main>
+    );
+  }
 
   if (!figure) {
     return (
@@ -35,11 +68,35 @@ const FigureArticle = () => {
     <main className="min-h-screen">
       <Navbar />
 
-      {/* Hero Image */}
+      {/* Hero Image — full photo, no crop */}
       <section className="relative pt-20">
-        <div className="w-full h-[50vh] md:h-[60vh] bg-secondary flex items-center justify-center">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-muted flex items-center justify-center">
-            <span className="text-4xl md:text-5xl font-bold text-muted-foreground">{initials}</span>
+        <div className="relative w-full min-h-[50vh] md:min-h-[70vh] lg:min-h-[80vh] bg-[#1a1a1a] flex items-center justify-center overflow-hidden">
+          {figure.imageUrl && !imgError ? (
+            <img 
+              src={figure.imageUrl} 
+              alt={figure.name} 
+              onError={() => setImgError(true)}
+              className="w-auto h-auto max-w-full max-h-[80vh] object-contain grayscale hover:grayscale-0 transition-all duration-700 z-10"
+            />
+          ) : (
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-muted/20 flex items-center justify-center z-10">
+              <span className="text-4xl md:text-5xl font-bold text-white/60">{initials}</span>
+            </div>
+          )}
+
+          {/* Gradient overlay at the bottom for name overlay */}
+          <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20 pointer-events-none" />
+
+          {/* Name & title overlay at the bottom */}
+          <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-8 md:pb-12 lg:pb-16">
+            <div className="max-w-5xl mx-auto">
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-lg">
+                {figure.name}
+              </h1>
+              <p className="text-sm md:text-lg text-white/80 mt-1 md:mt-2 drop-shadow-md">
+                {figure.title}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -56,7 +113,7 @@ const FigureArticle = () => {
         </Link>
 
         {/* Metadata */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-8">
           <span className="bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
             {figure.category}
           </span>
@@ -64,12 +121,6 @@ const FigureArticle = () => {
             {format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })}
           </span>
         </div>
-
-        {/* Title */}
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-2">
-          {figure.name}
-        </h1>
-        <p className="text-lg text-muted-foreground mb-10">{figure.title}</p>
 
         {/* Content */}
         <div className="prose prose-lg max-w-none text-foreground/90 leading-relaxed">

@@ -6,14 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+// Import check circle icon from lucide-react if available, or just use emoji/svg
+import { CheckCircle2 } from "lucide-react";
 
 const kategoriOptions = ["UMKM", "Komunitas", "Profesional", "Pendidikan", "Sosial", "Lainnya"];
 
 const FormCalonFigur = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [form, setForm] = useState({
     nama: "",
+    noWa: "",
     kategori: "",
     linkProfil: "",
     cerita: "",
@@ -29,20 +42,23 @@ const FormCalonFigur = () => {
     try {
       const formData = new URLSearchParams();
       formData.append("nama", form.nama.trim());
+      formData.append("noWa", form.noWa.trim());
       formData.append("kategori", form.kategori);
       formData.append("linkProfil", form.linkProfil.trim());
       formData.append("cerita", form.cerita.trim());
 
       await fetch(
-        "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec",
+        "https://script.google.com/macros/s/AKfycbyMx0n8F1q8HGJZ_nVzL9XjBxaCtcj2jXI35c6B9VpgwO6-nD2DIbvmkXZZL5-MbDE/exec",
         {
           method: "POST",
           mode: "no-cors",
           body: formData,
         }
       );
-      toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih, kisahmu sudah kami terima!" });
-      setForm({ nama: "", kategori: "", linkProfil: "", cerita: "" });
+      // Removed toast in favor of Modal
+      // toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih, kisahmu sudah kami terima!" });
+      setIsSuccessModalOpen(true);
+      setForm({ nama: "", noWa: "", kategori: "", linkProfil: "", cerita: "" });
     } catch {
       toast({ title: "Gagal Mengirim", description: "Terjadi kesalahan. Silakan coba lagi.", variant: "destructive" });
     } finally {
@@ -70,6 +86,19 @@ const FormCalonFigur = () => {
                 value={form.nama}
                 onChange={(e) => setForm({ ...form, nama: e.target.value })}
                 maxLength={100}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="noWa">No. WhatsApp Aktif *</Label>
+              <Input
+                id="noWa"
+                type="tel"
+                placeholder="Contoh: 081234567890"
+                value={form.noWa}
+                onChange={(e) => setForm({ ...form, noWa: e.target.value })}
+                maxLength={20}
                 required
               />
             </div>
@@ -123,6 +152,32 @@ const FormCalonFigur = () => {
           </form>
         </div>
       </section>
+
+      {/* Pop Up Success Modal */}
+      <AlertDialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
+        <AlertDialogContent className="max-w-md text-center">
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-8 h-8 text-primary" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-bold text-center">
+              Kisah Terkirim! 🎉
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base mt-2">
+              Terima kasih telah berbagi kisah inspiratif dengan Mekarhub! Perjalanan Anda sangat berarti dan tim kami akan segera memproses informasi yang telah Anda berikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center mt-6">
+            <AlertDialogAction 
+              onClick={() => setIsSuccessModalOpen(false)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-2"
+            >
+              Kembali
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Footer />
     </main>
   );
