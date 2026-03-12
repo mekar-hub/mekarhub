@@ -4,8 +4,11 @@ import PhilosophySection from "@/components/PhilosophySection";
 import ArchiveSection from "@/components/ArchiveSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const Index = () => {
+  useScrollReveal();
+
   return (
     <main className="min-h-screen">
       <Navbar />

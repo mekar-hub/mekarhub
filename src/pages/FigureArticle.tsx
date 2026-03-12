@@ -5,14 +5,28 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { Helmet } from "react-helmet-async";
+import logo from "@/assets/Logo_Mekar_Hub_1.png";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const FigureArticle = () => {
   const { slug } = useParams<{ slug: string }>();
+  useScrollReveal();
+  
   const [figure, setFigure] = useState<Figure | null>(
     defaultFigures.find((f) => f.slug === slug) || null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [offsetY, setOffsetY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setOffsetY(window.pageYOffset);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!SHEET_CSV_URL) return;
@@ -64,36 +78,86 @@ const FigureArticle = () => {
     .slice(0, 2)
     .toUpperCase();
 
+  // Get first 160 characters for description
+  const metaDescription = figure.story.length > 160 
+    ? `${figure.story.substring(0, 157)}...` 
+    : figure.story;
+
+  // Fallback image logic
+  const ogImage = figure.imageUrl && !imgError ? figure.imageUrl : logo;
+
   return (
     <main className="min-h-screen">
+      <Helmet>
+        <title>Kisah {figure.name} - Mekarhub</title>
+        <meta name="description" content={metaDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={`Kisah ${figure.name} - Mekarhub`} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={ogImage} />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`Kisah ${figure.name} - Mekarhub`} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={ogImage} />
+      </Helmet>
+
       <Navbar />
 
-      {/* Hero Image — full photo, no crop */}
-      <section className="relative pt-20">
-        <div className="relative w-full min-h-[50vh] md:min-h-[70vh] lg:min-h-[80vh] bg-[#1a1a1a] flex items-center justify-center overflow-hidden">
-          {figure.imageUrl && !imgError ? (
-            <img 
-              src={figure.imageUrl} 
-              alt={figure.name} 
-              onError={() => setImgError(true)}
-              className="w-auto h-auto max-w-full max-h-[80vh] object-contain grayscale hover:grayscale-0 transition-all duration-700 z-10"
-            />
-          ) : (
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-muted/20 flex items-center justify-center z-10">
-              <span className="text-4xl md:text-5xl font-bold text-white/60">{initials}</span>
-            </div>
-          )}
+      {/* Hero Image — full photo with Parallax */}
+      <section className="relative pt-20 overflow-hidden">
+        <div className="relative w-full min-h-[50vh] md:min-h-[70vh] lg:min-h-[80vh] bg-[#1a1a1a] flex items-center justify-center">
+          <div 
+            className="absolute inset-0 z-0 transition-transform duration-100 ease-out"
+            style={{ transform: `translateY(${offsetY * 0.4}px)` }}
+          >
+            {figure.imageUrl && !imgError ? (
+              <img 
+                src={figure.imageUrl} 
+                alt={figure.name} 
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover grayscale opacity-40 scale-110"
+              />
+            ) : (
+              <div className="w-full h-full bg-muted/10" />
+            )}
+          </div>
+
+          {/* Featured Portrait (Stays centered, optional slight parallax) */}
+          <div 
+            className="relative z-10 p-6 flex flex-col items-center reveal-on-scroll"
+            style={{ transform: `translateY(${offsetY * -0.1}px)` }}
+          >
+            {figure.imageUrl && !imgError ? (
+              <img 
+                src={figure.imageUrl} 
+                alt={figure.name} 
+                onError={() => setImgError(true)}
+                className="w-auto h-auto max-w-[90%] max-h-[60vh] md:max-h-[70vh] shadow-2xl rounded-sm object-contain grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105"
+              />
+            ) : (
+              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-muted/20 flex items-center justify-center border border-white/10 shadow-xl backdrop-blur-sm">
+                <span className="text-4xl md:text-5xl font-bold text-white/60">{initials}</span>
+              </div>
+            )}
+          </div>
 
           {/* Gradient overlay at the bottom for name overlay */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-20 pointer-events-none" />
 
           {/* Name & title overlay at the bottom */}
-          <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-8 md:pb-12 lg:pb-16">
-            <div className="max-w-5xl mx-auto">
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-lg">
+          <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-12 md:pb-16 lg:pb-20 reveal-on-scroll transition-all duration-1000" style={{ transitionDelay: '300ms' }}>
+            <div className="max-w-5xl mx-auto text-center md:text-left">
+              <span className="inline-block bg-primary px-3 py-1 rounded-full text-[10px] md:text-xs font-bold text-white uppercase tracking-widest mb-4 shadow-lg">
+                {figure.category}
+              </span>
+              <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
                 {figure.name}
               </h1>
-              <p className="text-sm md:text-lg text-white/80 mt-1 md:mt-2 drop-shadow-md">
+              <p className="text-base md:text-xl text-white/70 mt-2 md:mt-4 max-w-2xl font-light drop-shadow-lg">
                 {figure.title}
               </p>
             </div>
@@ -102,42 +166,58 @@ const FigureArticle = () => {
       </section>
 
       {/* Article Content */}
-      <article className="max-w-3xl mx-auto px-6 py-16">
+      <article className="max-w-3xl mx-auto px-6 md:px-8 py-20">
         {/* Back button */}
         <Link
           to="/#archive"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all mb-12 reveal-on-scroll hover:-translate-x-1"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           Kembali ke Kisah Mereka
         </Link>
 
-        {/* Metadata */}
-        <div className="flex flex-wrap items-center gap-3 mb-8">
-          <span className="bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
-            {figure.category}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })}
-          </span>
+        {/* Story Content */}
+        <div className="reveal-on-scroll" style={{ transitionDelay: '200ms' }}>
+          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground/60 uppercase tracking-widest mb-10">
+            <span className="w-8 h-[1px] bg-muted-foreground/30" />
+            <span>Dibagikan pada {format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })}</span>
+          </div>
+
+          <div className="prose prose-lg md:prose-xl max-w-none text-foreground/80 leading-relaxed font-light 
+            prose-p:text-justify prose-p:hyphens-auto prose-p:mb-6 
+            prose-blockquote:border-l-4 prose-blockquote:border-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-blockquote:rounded-r-lg
+            first-letter:text-5xl first-letter:font-bold first-letter:text-primary first-letter:mr-3 first-letter:float-left">
+            {figure.story.split('\n').map((para, i) => (
+              <p key={i}>{para}</p>
+            ))}
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="prose prose-lg max-w-none text-foreground/90 leading-relaxed">
-          <p>{figure.story}</p>
-        </div>
-
-        {/* Social link */}
-        <div className="mt-12 pt-8 border-t">
-          <a
-            href={figure.socialLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-primary font-semibold hover:underline"
-          >
-            Kunjungi Profil
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
+        {/* Social link & Conclusion */}
+        <div className="mt-20 pt-12 border-t reveal-on-scroll" style={{ transitionDelay: '400ms' }}>
+          <p className="text-sm text-muted-foreground mb-6 italic text-center md:text-left">
+            Ingin terhubung lebih jauh dengan {figure.name.split(' ')[0]}? 
+          </p>
+          <div className="flex justify-center md:justify-start">
+            <a
+              href={figure.socialLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-3 bg-card border-2 border-primary/20 px-8 py-4 rounded-full text-primary font-bold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all shadow-lg hover:shadow-primary/20 active:scale-95"
+            >
+              Ikuti di Media Sosial
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
         </div>
       </article>
 
