@@ -3,6 +3,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    {
+      "source": "/kisah/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*WhatsApp.*|.*facebookexternalhit.*|.*Twitterbot.*|.*LinkedInBot.*|.*Pinterest.*|.*TelegramBot.*|.*Slackbot.*|.*Discordbot.*)"
+        }
+      ],
+      "destination": "/api/og-proxy?slug=:slug"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
