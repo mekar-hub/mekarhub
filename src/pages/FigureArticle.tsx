@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL } from "@/data/figures";
+import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL, resolveImageUrl } from "@/data/figures";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -16,9 +16,16 @@ const FigureArticle = () => {
   const [figure, setFigure] = useState<Figure | null>(
     defaultFigures.find((f) => f.slug === slug) || null
   );
+  const [resolvedHeroUrl, setResolvedHeroUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [offsetY, setOffsetY] = useState(0);
+
+  useEffect(() => {
+    if (figure?.imageUrl) {
+      resolveImageUrl(figure.imageUrl).then(setResolvedHeroUrl).catch(() => setImgError(true));
+    }
+  }, [figure?.imageUrl]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -44,68 +51,54 @@ const FigureArticle = () => {
       .finally(() => setIsLoading(false));
   }, [slug]);
 
-  if (isLoading && !figure) {
-    return (
-      <main className="min-h-screen">
-        <Navbar />
+  const initials = figure?.name ? figure.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() : "MH";
+
+  // Fallback image logic
+  const ogImage = resolvedHeroUrl && !imgError ? resolvedHeroUrl : logo;
+  const displayTitle = figure ? `${figure.name} - Mekarhub` : "Mekarhub";
+  const metaDescription = figure 
+    ? (figure.story.length > 160 ? `${figure.story.substring(0, 157)}...` : figure.story)
+    : "Mekarhub menyajikan kisah inspiratif dari berbagai sosok penggerak di Indonesia.";
+
+  return (
+    <main className="min-h-screen">
+      <Helmet>
+        <title>{displayTitle}</title>
+        <meta name="description" content={metaDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={displayTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={ogImage} />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={displayTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={ogImage} />
+      </Helmet>
+
+      <Navbar />
+
+      {isLoading && !figure ? (
         <div className="pt-32 pb-24 text-center max-w-4xl mx-auto px-6">
           <p className="text-muted-foreground animate-pulse">Memuat artikel...</p>
         </div>
-        <Footer />
-      </main>
-    );
-  }
-
-  if (!figure) {
-    return (
-      <main className="min-h-screen">
-        <Navbar />
+      ) : !figure ? (
         <div className="pt-32 pb-24 text-center max-w-4xl mx-auto px-6">
           <h1 className="text-3xl font-bold text-foreground mb-4">Artikel tidak ditemukan</h1>
           <Link to="/#archive" className="text-primary font-semibold hover:underline">
             ← Kembali ke Kisah Mereka
           </Link>
         </div>
-        <Footer />
-      </main>
-    );
-  }
-
-  const initials = figure.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  // Get first 160 characters for description
-  const metaDescription = figure.story.length > 160 
-    ? `${figure.story.substring(0, 157)}...` 
-    : figure.story;
-
-  // Fallback image logic
-  const ogImage = figure.imageUrl && !imgError ? figure.imageUrl : logo;
-
-  return (
-    <main className="min-h-screen">
-      <Helmet>
-        <title>Kisah {figure.name} - Mekarhub</title>
-        <meta name="description" content={metaDescription} />
-        
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="article" />
-        <meta property="og:title" content={`Kisah ${figure.name} - Mekarhub`} />
-        <meta property="og:description" content={metaDescription} />
-        <meta property="og:image" content={ogImage} />
-        
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`Kisah ${figure.name} - Mekarhub`} />
-        <meta name="twitter:description" content={metaDescription} />
-        <meta name="twitter:image" content={ogImage} />
-      </Helmet>
-
-      <Navbar />
+      ) : (
+        <>
 
       {/* Hero Image — full photo with Parallax */}
       <section className="relative pt-20 overflow-hidden">
@@ -114,9 +107,9 @@ const FigureArticle = () => {
             className="absolute inset-0 z-0 transition-transform duration-100 ease-out"
             style={{ transform: `translateY(${offsetY * 0.4}px)` }}
           >
-            {figure.imageUrl && !imgError ? (
+            {resolvedHeroUrl && !imgError ? (
               <img 
-                src={figure.imageUrl} 
+                src={resolvedHeroUrl} 
                 alt={figure.name} 
                 onError={() => setImgError(true)}
                 className="w-full h-full object-cover grayscale opacity-40 scale-110"
@@ -131,9 +124,9 @@ const FigureArticle = () => {
             className="relative z-10 p-6 flex flex-col items-center reveal-on-scroll"
             style={{ transform: `translateY(${offsetY * -0.1}px)` }}
           >
-            {figure.imageUrl && !imgError ? (
+            {resolvedHeroUrl && !imgError ? (
               <img 
-                src={figure.imageUrl} 
+                src={resolvedHeroUrl} 
                 alt={figure.name} 
                 onError={() => setImgError(true)}
                 className="w-auto h-auto max-w-[90%] max-h-[60vh] md:max-h-[70vh] shadow-2xl rounded-sm object-contain grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105"
@@ -167,15 +160,6 @@ const FigureArticle = () => {
 
       {/* Article Content */}
       <article className="max-w-3xl mx-auto px-6 md:px-8 py-20">
-        {/* Back button */}
-        <Link
-          to="/#archive"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all mb-12 reveal-on-scroll hover:-translate-x-1"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Kembali ke Kisah Mereka
-        </Link>
-
         {/* Story Content */}
         <div className="reveal-on-scroll" style={{ transitionDelay: '200ms' }}>
           <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground/60 uppercase tracking-widest mb-10">
@@ -190,6 +174,16 @@ const FigureArticle = () => {
             {figure.story.split('\n').map((para, i) => (
               <p key={i}>{para}</p>
             ))}
+          </div>
+
+          <div className="mt-12 flex justify-center md:justify-start">
+            <Link
+              to="/#archive"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all hover:-translate-x-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Kembali ke Kisah Mereka
+            </Link>
           </div>
         </div>
 
@@ -220,6 +214,8 @@ const FigureArticle = () => {
           </div>
         </div>
       </article>
+        </>
+      )}
 
       <Footer />
     </main>

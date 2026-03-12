@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import FigureArticle from "./pages/FigureArticle";
 import FormCalonFigur from "./pages/FormCalonFigur";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/kisah/:slug" element={<FigureArticle />} />

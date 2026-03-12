@@ -51,7 +51,7 @@ const resolveImgBBLink = async (url: string): Promise<string> => {
 };
 
 // Async helper: converts any share/viewer URL to a direct image URL
-const resolveImageUrl = async (url: string = ""): Promise<string> => {
+export const resolveImageUrl = async (url: string = ""): Promise<string> => {
   if (!url || url.trim() === "") return "";
   const trimmed = url.trim();
   
@@ -71,7 +71,6 @@ const resolveImageUrl = async (url: string = ""): Promise<string> => {
 
 // Function to fetch and parse from Google Sheets CSV
 export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
-  // Add a timestamp to bypass browser caching of the CSV data
   const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
   
   return new Promise((resolve, reject) => {
@@ -80,9 +79,9 @@ export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> =
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
-      complete: async (results) => {
+      complete: (results) => {
         try {
-          const rawFigures = results.data.map((row: any) => ({
+          const rawFigures: Figure[] = results.data.map((row: any) => ({
             id: Number(row.id),
             name: row.name || "",
             title: row.title || "",
@@ -95,16 +94,8 @@ export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> =
             imageUrl: row.imageUrl || "",
           }));
 
-          // Resolve all image URLs concurrently (handles Drive + ImgBB viewer links)
-          const resolvedFigures: Figure[] = await Promise.all(
-            rawFigures.map(async (fig: any) => ({
-              ...fig,
-              imageUrl: await resolveImageUrl(fig.imageUrl) || undefined,
-            }))
-          );
-
-          console.log("Data berhasil diambil dari Google Sheets:", resolvedFigures);
-          resolve(resolvedFigures);
+          console.log("Data teks berhasil diambil dari Google Sheets:", rawFigures);
+          resolve(rawFigures);
         } catch (error) {
           reject(error);
         }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export const useScrollReveal = () => {
+export const useScrollReveal = (deps: any[] = []) => {
   useEffect(() => {
     const observerOptions = {
       threshold: 0.1,
@@ -11,8 +11,6 @@ export const useScrollReveal = () => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add("reveal-active");
-          // Optionally unobserve after revealing
-          // observer.unobserve(entry.target);
         }
       });
     }, observerOptions);
@@ -21,5 +19,5 @@ export const useScrollReveal = () => {
     elements.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
-  }, []);
+  }, deps);
 };
