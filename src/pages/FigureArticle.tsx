@@ -8,10 +8,13 @@ import { id } from "date-fns/locale";
 import { Helmet } from "react-helmet-async";
 import logo from "@/assets/Logo_Mekar_Hub_1.png";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useToast } from "@/hooks/use-toast";
+import { Facebook, MessageCircle, Copy, Share2 } from "lucide-react";
 
 const FigureArticle = () => {
   const { slug } = useParams<{ slug: string }>();
   useScrollReveal();
+  const { toast } = useToast();
   
   const [figure, setFigure] = useState<Figure | null>(
     defaultFigures.find((f) => f.slug === slug) || null
@@ -64,6 +67,27 @@ const FigureArticle = () => {
   const metaDescription = figure 
     ? (figure.story.length > 160 ? `${figure.story.substring(0, 157)}...` : figure.story)
     : "Mekarhub menyajikan kisah inspiratif dari berbagai sosok penggerak di Indonesia.";
+
+  const currentUrl = window.location.href;
+
+  const handleShareWA = () => {
+    const text = `Baca kisah ${figure?.name} di Mekarhub! Cek selengkapnya di sini: ${currentUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleShareFB = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, "_blank");
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(currentUrl).then(() => {
+      toast({
+        title: "Link berhasil disalin!",
+        description: "Tautan artikel telah tersimpan di clipboard Anda.",
+        duration: 3000,
+      });
+    });
+  };
 
   return (
     <main className="min-h-screen">
@@ -184,6 +208,45 @@ const FigureArticle = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
               Kembali ke Kisah Mereka
             </Link>
+          </div>
+        </div>
+
+        {/* Share Story Section */}
+        <div className="mt-16 reveal-on-scroll" style={{ transitionDelay: '300ms' }}>
+          <div className="flex flex-col items-center md:items-start border-t pt-10">
+            <div className="flex items-center gap-2 mb-6 text-sm font-semibold text-primary/80 uppercase tracking-widest">
+              <Share2 size={16} />
+              <span>Bagikan Kisah Inspiratif Ini</span>
+            </div>
+            
+            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+              <button
+                onClick={handleShareWA}
+                className="group flex items-center gap-3 px-6 py-3 rounded-full border border-primary/10 bg-primary/5 hover:bg-[#25D366] hover:border-[#25D366] hover:text-white transition-all duration-300 active:scale-95"
+                title="Bagikan ke WhatsApp"
+              >
+                <MessageCircle size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium">WhatsApp</span>
+              </button>
+              
+              <button
+                onClick={handleShareFB}
+                className="group flex items-center gap-3 px-6 py-3 rounded-full border border-primary/10 bg-primary/5 hover:bg-[#1877F2] hover:border-[#1877F2] hover:text-white transition-all duration-300 active:scale-95"
+                title="Bagikan ke Facebook"
+              >
+                <Facebook size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium">Facebook</span>
+              </button>
+              
+              <button
+                onClick={handleCopyLink}
+                className="group flex items-center gap-3 px-6 py-3 rounded-full border border-primary/10 bg-primary/5 hover:bg-primary hover:border-primary hover:text-white transition-all duration-300 active:scale-95"
+                title="Salin Tautan"
+              >
+                <Copy size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium">Salin Link</span>
+              </button>
+            </div>
           </div>
         </div>
 
