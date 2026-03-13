@@ -27,17 +27,22 @@ Dokumen ini merangkum perubahan visual, interaksi, dan fitur SEO terbaru yang te
 - **Social Sharing**: Mendukung tampilan preview yang menarik di WhatsApp, Twitter (X), dan Facebook.
 - **Fallback Image**: Jika figur tidak memiliki foto, sistem akan otomatis menggunakan logo Mekarhub sebagai thumbnail preview.
 
+### 5. Notification & Robust Data
+- **Email Notifications**: Notifikasi otomatis setiap ada pengajuan baru melalui Resend API.
+- **Direct Image Resolution**: Konversi otomatis link Google Drive & ImgBB menjadi link gambar langsung.
+- **Testing Page**: Halaman khusus di `/test-notification` untuk uji coba sistem.
+
 ## 🛠️ Tech Stack & Konfigurasi Utama
-- **Styling**: Tailwind CSS dengan plugin `@tailwindcss/typography`.
-- **Interactions**: Custom Intersection Observer Hook (`useScrollReveal.ts`).
-- **Head Management**: `react-helmet-async`.
-- **Data Parsing**: `PapaParse` untuk integrasi CSV/Google Sheets.
+- **Styling**: Tailwind CSS + `@tailwindcss/typography` & `shadcn-ui`.
+- **Data Parsing**: `PapaParse` untuk Google Sheets CSV Integration.
+- **Notification**: Resend API & Vercel Serverless Functions.
+- **IDE Support**: `.vscode/settings.json` untuk optimasi Tailwind linting.
 
 ## 📄 File Kunci Terkait Perubahan
-- `src/components/Navbar.tsx`: Logika logo dinamis dan sticky behavior.
-- `src/pages/FigureArticle.tsx`: Tipografi artikel, SEO tags, dan animasi.
-- `src/index.css`: Definisi animasi `reveal-on-scroll`.
-- `tailwind.config.ts`: Konfigurasi plugin typography dan tema.
+- `src/pages/FormCalonFigur.tsx`: Formulir kolaborasi & Sinkronisasi Notifikasi.
+- `api/notify-admin.js`: Serverless handler untuk notifikasi email.
+- `src/data/figures.ts`: Logika resolusi gambar & sync CSV.
+- `src/pages/TestNotification.tsx`: Halaman pengujian manual.
 
 ---
-*Terakhir diperbarui: 13 Maret 2026*
+*Terakhir diperbarui: 13 Maret 2026 (v1.2)*

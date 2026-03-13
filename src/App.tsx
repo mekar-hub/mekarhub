@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import FigureArticle from "./pages/FigureArticle";
 import FormCalonFigur from "./pages/FormCalonFigur";
+import TestNotification from "./pages/TestNotification";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/kisah/:slug" element={<FigureArticle />} />
             <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
+            <Route path="/test-notification" element={<TestNotification />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

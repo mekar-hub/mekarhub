@@ -47,7 +47,7 @@ const FormCalonFigur = () => {
       formData.append("linkProfil", form.linkProfil.trim());
       formData.append("cerita", form.cerita.trim());
 
-      await fetch(
+      const gsPromise = fetch(
         "https://script.google.com/macros/s/AKfycbyMx0n8F1q8HGJZ_nVzL9XjBxaCtcj2jXI35c6B9VpgwO6-nD2DIbvmkXZZL5-MbDE/exec",
         {
           method: "POST",
@@ -55,8 +55,17 @@ const FormCalonFigur = () => {
           body: formData,
         }
       );
-      // Removed toast in favor of Modal
-      // toast({ title: "Kisah Terkirim! 🎉", description: "Terima kasih, kisahmu sudah kami terima!" });
+
+      // Call our notification API
+      const notifyPromise = fetch("/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      // We wait for both, but even if notify fails, we show success if GS is sent (best effort for notify)
+      await Promise.allSettled([gsPromise, notifyPromise]);
+      
       setIsSuccessModalOpen(true);
       setForm({ nama: "", noWa: "", kategori: "", linkProfil: "", cerita: "" });
     } catch {

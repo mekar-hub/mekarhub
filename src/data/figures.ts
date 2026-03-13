@@ -52,21 +52,24 @@ const resolveImgBBLink = async (url: string): Promise<string> => {
 
 // Async helper: converts any share/viewer URL to a direct image URL
 export const resolveImageUrl = async (url: string = ""): Promise<string> => {
-  if (!url || url.trim() === "") return "";
+  if (!url || typeof url !== 'string' || url.trim() === "") return "";
   const trimmed = url.trim();
   
+  // Handle protocol-relative URLs
+  const fullUrl = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+
   // Google Drive – sync conversion
-  if (trimmed.includes("drive.google.com")) {
-    return convertDriveLink(trimmed);
+  if (fullUrl.includes("drive.google.com")) {
+    return convertDriveLink(fullUrl);
   }
 
   // ImgBB viewer link – needs async resolution
-  if (trimmed.includes("ibb.co") && !trimmed.includes("i.ibb.co")) {
-    return resolveImgBBLink(trimmed);
+  if (fullUrl.includes("ibb.co") && !fullUrl.includes("i.ibb.co")) {
+    return resolveImgBBLink(fullUrl);
   }
 
-  // Already a direct image link (ends with .jpg, .png, .webp, etc.) – use as-is
-  return trimmed;
+  // Already a direct image link or other URL – use as-is
+  return fullUrl;
 };
 
 // Function to fetch and parse from Google Sheets CSV

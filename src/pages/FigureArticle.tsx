@@ -13,12 +13,13 @@ import { Facebook, MessageCircle, Copy, Share2 } from "lucide-react";
 
 const FigureArticle = () => {
   const { slug } = useParams<{ slug: string }>();
-  useScrollReveal();
-  const { toast } = useToast();
   
   const [figure, setFigure] = useState<Figure | null>(
     defaultFigures.find((f) => f.slug === slug) || null
   );
+
+  useScrollReveal([figure]);
+  const { toast } = useToast();
   const [resolvedHeroUrl, setResolvedHeroUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -188,7 +189,11 @@ const FigureArticle = () => {
         <div className="reveal-on-scroll" style={{ transitionDelay: '200ms' }}>
           <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground/60 uppercase tracking-widest mb-10">
             <span className="w-8 h-[1px] bg-muted-foreground/30" />
-            <span>Dibagikan pada {format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })}</span>
+            <span>
+              Dibagikan pada {figure.publishedDate && !isNaN(new Date(figure.publishedDate).getTime()) 
+                ? format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })
+                : "Baru-baru ini"}
+            </span>
           </div>
 
           <div className="prose prose-lg md:prose-xl max-w-none text-foreground/80 leading-relaxed font-light 
