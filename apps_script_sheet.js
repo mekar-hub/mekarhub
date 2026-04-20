@@ -6,16 +6,18 @@
  * Kolom Sheet (baris 1 = header):
  * A: Tanggal
  * B: Nama Lengkap
- * C: Jabatan/Posisi
- * D: Nama Brand/Usaha
+ * C: Jabatan atau Posisi
+ * D: WhatsApp / HP
  * E: Media Sosial
  * F: Lokasi
- * G: Q1 - Rintisan Bawah
- * H: Q2 - Keunikan Produk
- * I: Q3 - Ekspansi/Pindah Lokasi
- * J: Q4 - Standar Operasional
- * K: Q5 - Dampak Sosial
- * L: Pencapaian
+ * G: Identitas dan Spirit
+ * H: Momen Titik Balik
+ * I: Keunikan Autentik
+ * J: Filosofi Pelayanan
+ * K: Dinamika Terkini
+ * L: Sisi Kemanusiaan
+ * M: Harapan
+ * N: Status (Default: Nominee)
  */
 
 function doPost(e) {
@@ -29,36 +31,41 @@ function doPost(e) {
       sheet.appendRow([
         "Tanggal",
         "Nama Lengkap",
-        "Jabatan/Posisi",
-        "Nama Brand/Usaha",
+        "Jabatan atau Posisi",
+        "WhatsApp / HP",
         "Media Sosial",
         "Lokasi",
-        "Q1 - Rintisan",
-        "Q2 - Keunikan",
-        "Q3 - Ekspansi",
-        "Q4 - Standar Op.",
-        "Q5 - Dampak Sosial",
-        "Pencapaian/Kebanggaan",
+        "Identitas dan Spirit",
+        "Momen Titik Balik",
+        "Keunikan Autentik",
+        "Filosofi Pelayanan",
+        "Dinamika Terkini",
+        "Sisi Kemanusiaan",
+        "Harapan",
+        "Status",
       ]);
     }
 
-    var timestamp = new Date().toLocaleString("id-ID", {
-      timeZone: "Asia/Makassar",
-    });
+    var timestamp = new Date();
+    
+    // Status awal: Nominee (bisa diubah admin nanti)
+    var status = "Nominee";
 
     sheet.appendRow([
       timestamp,                        // A: Tanggal
-      params.nama || "",               // B: Nama Lengkap
-      params.jabatan || "",            // C: Jabatan/Posisi
-      params.namaBrand || "",          // D: Nama Brand/Usaha
-      params.mediaSosial || "",        // E: Media Sosial
-      params.lokasi || "",             // F: Lokasi
-      params.q1_rintisan || "",        // G: Q1
-      params.q2_keunikan || "",        // H: Q2
-      params.q3_ekspansi || "",        // I: Q3
-      params.q4_standarOp || "",       // J: Q4
-      params.q5_dampakSosial || "",    // K: Q5
-      params.pencapaian || "",         // L: Pencapaian
+      (params.nama || "").trim(),      // B: Nama Lengkap
+      (params.jabatan || "").trim(),   // C: Jabatan atau Posisi
+      (params.whatsapp || "").trim(),  // D: WhatsApp / HP
+      (params.mediaSosial || "").trim(), // E: Media Sosial
+      (params.lokasi || "").trim(),    // F: Lokasi
+      (params.identitasSpirit || "").trim(), // G: Identitas dan Spirit
+      (params.titikBalik || "").trim(),      // H: Momen Titik Balik
+      (params.keunikanAutentik || "").trim(), // I: Keunikan Autentik
+      (params.filosofiPelayanan || "").trim(), // J: Filosofi Pelayanan
+      (params.dinamikaTerkini || "").trim(),   // K: Dinamika Terkini
+      (params.sisiKemanusiaan || "").trim(),   // L: Sisi Kemanusiaan
+      (params.harapan || "").trim(),            // M: Harapan
+      status                            // N: Status
     ]);
 
     return ContentService.createTextOutput(

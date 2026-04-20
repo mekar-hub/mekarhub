@@ -24,6 +24,13 @@ const Navbar = () => {
 
   const showWhiteLogo = isHomepage && !isScrolled;
 
+  const scrollToTop = (e: React.MouseEvent) => {
+    if (isHomepage) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
@@ -32,8 +39,12 @@ const Navbar = () => {
           : isHomepage ? "bg-transparent border-transparent py-4" : "bg-white border-b py-2"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-12">
-        <Link to="/" className="relative transition-transform duration-500 hover:scale-105 flex items-center">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
+        <Link 
+          to="/" 
+          onClick={scrollToTop}
+          className="relative transition-transform duration-500 hover:scale-105 flex items-center"
+        >
           <div className={`relative ${isScrolled || !isHomepage ? "h-20 md:h-28" : "h-24 md:h-36"} aspect-auto transition-all duration-500`}>
             {/* White Logo (Cross-fade) */}
             <img 

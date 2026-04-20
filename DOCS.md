@@ -27,22 +27,29 @@ Dokumen ini merangkum perubahan visual, interaksi, dan fitur SEO terbaru yang te
 - **Social Sharing**: Mendukung tampilan preview yang menarik di WhatsApp, Twitter (X), dan Facebook.
 - **Fallback Image**: Jika figur tidak memiliki foto, sistem akan otomatis menggunakan logo Mekarhub sebagai thumbnail preview.
 
-### 5. Notification & Robust Data
+### 5. Revamped Collaboration Form (Kisah Mekarhub)
+- **Struktur Baru**: Mengubah dari model Q&A (Ya/Tidak) menjadi narasi terstruktur (Identitas Spirit, Titik Balik, Keunikan, Filosofi, Dinamika, Sisi Kemanusiaan, Harapan).
+- **Textarea Narrative**: Seluruh input menggunakan Textarea untuk memberikan ruang bercerita bagi pengirim kisah.
+- **Success Modal & Auto-Redirect**: 
+  - Pesan keberhasilan: "Berhasil Terkirim!".
+  - **Logic**: Auto-redirect ke WhatsApp Admin dalam 3 detik setelah pengiriman berhasil.
+- **Improved Field Mapping**: Sinkronisasi penuh antara Frontend, Serverless Function, dan Google Sheets (Kolom A-N).
+
+### 6. Notification & Robust Data
 - **Email Notifications**: Notifikasi otomatis setiap ada pengajuan baru melalui Resend API.
+- **Google Sheets Logic**: Penambahan kolom "Status" otomatis (default: Nominee) untuk manajemen data.
 - **Direct Image Resolution**: Konversi otomatis link Google Drive & ImgBB menjadi link gambar langsung.
-- **Testing Page**: Halaman khusus di `/test-notification` untuk uji coba sistem.
 
 ## 🛠️ Tech Stack & Konfigurasi Utama
 - **Styling**: Tailwind CSS + `@tailwindcss/typography` & `shadcn-ui`.
 - **Data Parsing**: `PapaParse` untuk Google Sheets CSV Integration.
 - **Notification**: Resend API & Vercel Serverless Functions.
-- **IDE Support**: `.vscode/settings.json` untuk optimasi Tailwind linting.
 
 ## 📄 File Kunci Terkait Perubahan
-- `src/pages/FormCalonFigur.tsx`: Formulir kolaborasi & Sinkronisasi Notifikasi.
+- `src/pages/FormCalonFigur.tsx`: Formulir kolaborasi & Logika Success Modal.
 - `api/notify-admin.js`: Serverless handler untuk notifikasi email.
+- `apps_script_sheet.js`: Script backend untuk Google Sheets (Kolom A-N).
 - `src/data/figures.ts`: Logika resolusi gambar & sync CSV.
-- `src/pages/TestNotification.tsx`: Halaman pengujian manual.
 
 ---
-*Terakhir diperbarui: 13 Maret 2026 (v1.2)*
+*Terakhir diperbarui: 20 April 2026 (v1.5)*
