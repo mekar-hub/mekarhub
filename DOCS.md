@@ -35,21 +35,30 @@ Dokumen ini merangkum perubahan visual, interaksi, dan fitur SEO terbaru yang te
   - **Logic**: Auto-redirect ke WhatsApp Admin dalam 3 detik setelah pengiriman berhasil.
 - **Improved Field Mapping**: Sinkronisasi penuh antara Frontend, Serverless Function, dan Google Sheets (Kolom A-N).
 
-### 6. Notification & Robust Data
-- **Email Notifications**: Notifikasi otomatis setiap ada pengajuan baru melalui Resend API.
-- **Google Sheets Logic**: Penambahan kolom "Status" otomatis (default: Nominee) untuk manajemen data.
-- **Direct Image Resolution**: Konversi otomatis link Google Drive & ImgBB menjadi link gambar langsung.
+### 7. Internal Admin Dashboard (Production & Finance)
+- **PIN-Protected Access**: Sistem keamanan berbasis PIN (`mekarhub2026`) untuk membatasi akses tim internal.
+- **Client Selection Logic**: 
+  - Admin dapat memilih klien yang sudah mendaftar melalui pencarian dinamis (fetch dari Google Apps Script).
+  - Data produksi akan diperbarui pada baris yang sama di Spreadsheet (`idBaris`).
+- **Production & Creative Management**: Input khusus untuk nama tim produksi (Lead, Videografer, Editor) dan detail konsep kreatif (Ide Besar, Visual Tone, Hook).
+- **Financial Auto-Calculation**: 
+  - Input "Total Nilai Kontrak" otomatis memicu kalkulasi real-time.
+  - Menampilkan ringkasan **DP Kontrak (50%)** dan **Pelunasan (50%)** secara visual.
+- **Smart Auto-Fill**: Sistem otomatis mengisi detail rekening tujuan jika data `savedRekening` tersedia di profil klien.
 
 ## 🛠️ Tech Stack & Konfigurasi Utama
 - **Styling**: Tailwind CSS + `@tailwindcss/typography` & `shadcn-ui`.
 - **Data Parsing**: `PapaParse` untuk Google Sheets CSV Integration.
 - **Notification**: Resend API & Vercel Serverless Functions.
+- **Backend Sync**: Google Apps Script (GAS) Web App (POST/GET).
 
 ## 📄 File Kunci Terkait Perubahan
+- `src/pages/AdminDashboard.tsx`: Dashboard manajemen produksi & keuangan tim internal.
 - `src/pages/FormCalonFigur.tsx`: Formulir kolaborasi & Logika Success Modal.
 - `api/notify-admin.js`: Serverless handler untuk notifikasi email.
 - `apps_script_sheet.js`: Script backend untuk Google Sheets (Kolom A-N).
 - `src/data/figures.ts`: Logika resolusi gambar & sync CSV.
+- `src/App.tsx`: Konfigurasi routing utama.
 
 ---
-*Terakhir diperbarui: 20 April 2026 (v1.5)*
+*Terakhir diperbarui: 21 April 2026 (v1.6)*

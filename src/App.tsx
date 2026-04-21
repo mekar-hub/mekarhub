@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import FigureArticle from "./pages/FigureArticle";
 import FormCalonFigur from "./pages/FormCalonFigur";
 import TestNotification from "./pages/TestNotification";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/kisah/:slug" element={<FigureArticle />} />
             <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
             <Route path="/test-notification" element={<TestNotification />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -93,7 +93,7 @@ const FormCalonFigur = () => {
       formData.append("harapan", form.harapan.trim());
 
       const gsPromise = fetch(
-        "https://script.google.com/macros/s/AKfycbyMx0n8F1q8HGJZ_nVzL9XjBxaCtcj2jXI35c6B9VpgwO6-nD2DIbvmkXZZL5-MbDE/exec",
+        "https://script.google.com/macros/s/AKfycbyI0lzKRhO5OrJtUrQIBmxgdL3pRkM-DA_EpTlzBMHEaMRulGLwVOl0UKm4CdwdgnsD/exec",
         {
           method: "POST",
           mode: "no-cors",
