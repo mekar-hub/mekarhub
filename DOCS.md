@@ -1,64 +1,85 @@
-# Mekarhub - Project Documentation & Visual Updates
+# Dokumentasi Mekarhub Integrated System (v3.0)
 
-Dokumen ini merangkum perubahan visual, interaksi, dan fitur SEO terbaru yang telah diterapkan pada website Mekarhub.
+## 📁 Struktur Database
 
-## 🚀 Fitur & Pembaruan Visual
+### 1. Spreadsheet Klien
+**ID:** `1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q`
+**Fungsi:** Menyimpan data pendaftaran klien dan detail produksi/keuangan.
 
-### 1. Sticky Navbar & Dynamic Logo
-- **Transisi Navbar**: Navbar berubah dari transparan menjadi putih solid dengan efek blur dan bayangan halus saat user melakukan scroll.
-- **Logo Dinamis**: 
-  - **Logo Putih**: Otomatis muncul di Homepage saat di posisi teratas (navbar transparan).
-  - **Logo Merah (Original)**: Muncul saat scroll atau saat berada di halaman artikel.
-- **Cross-Fade Transition**: Perpindahan antar logo sangat halus tanpa lonjakan tata letak (*layout shift*).
-- **Slim Profile**: Navbar tetap ramping dengan tinggi `h-12`, namun mendukung logo masif (hingga `h-36`) untuk identitas visual yang kuat.
+**Pemetaan Kolom Utama:**
+- **A**: Tanggal (Timestamp)
+- **B**: Nama Lengkap
+- **C**: Jabatan
+- **D**: No. WhatsApp
+- **E**: Sosial Media Brand
+- **F**: Lokasi Brand
+- **G**: Deskripsi Usaha
+- **H**: Momen Berkesan
+- **M**: Harapan
+- **N**: Status (Nominee / Client)
+- **P**: Link Brief (Otomatis)
+- **V**: Link MoU (Otomatis)
+- **W**: Nilai Kontrak
+- **X**: Nomor Rekening
+- **Y**: Target Produksi
+- **Z**: Status Pelunasan
+- **AA**: Nama Lead
+- **AB**: Nama Videografer
+- **AC**: Nama Editor
+- **AD**: Jadwal Visit
+- **AE**: Status Produksi
+- **AF**: Link Hasil Final
 
-### 2. Tipografi & Keterbacaan Artikel
-- **Rata Kanan-Kiri (Justified)**: Seluruh isi paragraf artikel diatur menggunakan `text-justify` dan `hyphens-auto` agar tetap rapi tanpa spasi yang berantakan.
-- **Tipografi Premium**: Ukuran font ditingkatkan ke `text-lg` (minimal 18px) dengan warna abu-abu gelap (`text-foreground/80`) yang nyaman di mata.
-- **Custom Blockquote**: Kutipan figur memiliki gaya khusus dengan garis tepi primer, latar belakang tipis, dan font miring (*italic*).
+### 2. Spreadsheet Figur
+**ID:** `18iGYoxGPp6A0CuAtw0L8qMj9Tth4XzBglA-sU4WkyxE`
+**Fungsi:** Menyimpan data narasi cerita yang akan ditampilkan di website.
 
-### 3. Interaksi & Efek Visual
-- **Hero Parallax**: Gambar latar belakang Hero Section bergerak lebih lambat dibanding konten depan saat di-scroll.
-- **Entrance Animations**: Elemen utama (teks hero, card kisah, filosofi) muncul secara halus (*fade-in up*) saat masuk ke dalam viewport menggunakan custom hook `useScrollReveal`.
-- **Responsive Symmetry**: Penyesuaian padding mobile dan desktop untuk memastikan tampilan elegan di semua perangkat.
-
-### 4. SEO & Social Media Preview (Open Graph)
-- **Dynamic Meta Tags**: Menggunakan `react-helmet-async` untuk memperbarui judul, deskripsi, dan gambar preview secara otomatis berdasarkan data figur.
-- **Social Sharing**: Mendukung tampilan preview yang menarik di WhatsApp, Twitter (X), dan Facebook.
-- **Fallback Image**: Jika figur tidak memiliki foto, sistem akan otomatis menggunakan logo Mekarhub sebagai thumbnail preview.
-
-### 5. Revamped Collaboration Form (Kisah Mekarhub)
-- **Struktur Baru**: Mengubah dari model Q&A (Ya/Tidak) menjadi narasi terstruktur (Identitas Spirit, Titik Balik, Keunikan, Filosofi, Dinamika, Sisi Kemanusiaan, Harapan).
-- **Textarea Narrative**: Seluruh input menggunakan Textarea untuk memberikan ruang bercerita bagi pengirim kisah.
-- **Success Modal & Auto-Redirect**: 
-  - Pesan keberhasilan: "Berhasil Terkirim!".
-  - **Logic**: Auto-redirect ke WhatsApp Admin dalam 3 detik setelah pengiriman berhasil.
-- **Improved Field Mapping**: Sinkronisasi penuh antara Frontend, Serverless Function, dan Google Sheets (Kolom A-N).
-
-### 7. Internal Admin Dashboard (Production & Finance)
-- **PIN-Protected Access**: Sistem keamanan berbasis PIN (`mekarhub2026`) untuk membatasi akses tim internal.
-- **Client Selection Logic**: 
-  - Admin dapat memilih klien yang sudah mendaftar melalui pencarian dinamis (fetch dari Google Apps Script).
-  - Data produksi akan diperbarui pada baris yang sama di Spreadsheet (`idBaris`).
-- **Production & Creative Management**: Input khusus untuk nama tim produksi (Lead, Videografer, Editor) dan detail konsep kreatif (Ide Besar, Visual Tone, Hook).
-- **Financial Auto-Calculation**: 
-  - Input "Total Nilai Kontrak" otomatis memicu kalkulasi real-time.
-  - Menampilkan ringkasan **DP Kontrak (50%)** dan **Pelunasan (50%)** secara visual.
-- **Smart Auto-Fill**: Sistem otomatis mengisi detail rekening tujuan jika data `savedRekening` tersedia di profil klien.
-
-## 🛠️ Tech Stack & Konfigurasi Utama
-- **Styling**: Tailwind CSS + `@tailwindcss/typography` & `shadcn-ui`.
-- **Data Parsing**: `PapaParse` untuk Google Sheets CSV Integration.
-- **Notification**: Resend API & Vercel Serverless Functions.
-- **Backend Sync**: Google Apps Script (GAS) Web App (POST/GET).
-
-## 📄 File Kunci Terkait Perubahan
-- `src/pages/AdminDashboard.tsx`: Dashboard manajemen produksi & keuangan tim internal.
-- `src/pages/FormCalonFigur.tsx`: Formulir kolaborasi & Logika Success Modal.
-- `api/notify-admin.js`: Serverless handler untuk notifikasi email.
-- `apps_script_sheet.js`: Script backend untuk Google Sheets (Kolom A-N).
-- `src/data/figures.ts`: Logika resolusi gambar & sync CSV.
-- `src/App.tsx`: Konfigurasi routing utama.
+**Pemetaan Kolom:**
+- **A**: ID (Auto)
+- **B**: Nama Figur
+- **C**: Judul Cerita
+- **D**: Kategori
+- **G**: Slug URL
+- **H**: Narasi Cerita
+- **J**: Link Gambar Utama
+- **K**: ID Relasi Klien (Penghubung ke Spreadsheet Klien)
 
 ---
-*Terakhir diperbarui: 21 April 2026 (v1.6)*
+
+## 🛠️ Google Apps Script (v3.0 - Integrated)
+
+Backend sekarang menggunakan satu skrip terpusat yang mengelola kedua spreadsheet sekaligus.
+
+### Fitur Utama GAS:
+1. **Integrated Access**: Menggunakan `openById` untuk mengakses data klien dan figur dalam satu pintu API.
+2. **Auto-Document**: Membuat MoU dan Brief secara otomatis ke Google Drive.
+3. **Public Access**: Pengaturan Deployment harus diset ke **"Anyone"** agar dashboard dapat menarik data tanpa kendala CORS.
+
+---
+
+## 🖥️ Admin Dashboard (Responsive v3.0)
+
+**URL:** `/admin` | **PIN:** `mekarhub2026`
+
+### Fitur Unggulan Baru:
+- **Mobile First Design**: 
+  - **Card View**: Tabel otomatis berubah menjadi kartu di layar HP.
+  - **Hamburger Menu**: Navigasi sidebar yang dapat disembunyikan.
+  - **No Auto-Zoom**: Font input 16px untuk kenyamanan mengetik di seluler.
+- **Financial Center**: 
+  - **Live DP 50%**: Perhitungan otomatis nominal DP saat Nilai Kontrak diisi.
+- **WhatsApp Professional**:
+  - Tombol WhatsApp otomatis menyertakan template sapaan profesional: *"Halo [Nama], salam hangat dari Mekarhub. Kami telah menerima kiriman kisah Anda..."*
+- **Live Preview Modal**:
+  - Pratinjau dokumen (Brief/MoU) menggunakan modal layar penuh dengan sistem otomatis mengubah link `/edit` menjadi `/preview`.
+
+---
+
+## 🚀 Cara Update / Deploy
+
+1. Salin kode dari `apps_script_sheet.js` (v2.8).
+2. Tempel di editor Google Apps Script (Sangat disarankan di Apps Script file **Figur**).
+3. Klik **Deploy** > **New Deployment**.
+4. Pilih **Web App**, Jalankan sebagai **Me**, Akses **Anyone**.
+5. Salin URL baru tersebut ke variabel `GAS_ENDPOINT` di file `AdminDashboard.tsx` dan `FormCalonFigur.tsx`.
+6. Lakukan **Hard Refresh (Ctrl + F5)** pada browser setelah update frontend.
