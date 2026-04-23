@@ -201,7 +201,31 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  return createJsonResponse({ error: "Gunakan GET untuk Admin Dashboard" });
+  try {
+    const ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
+    const sheet = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
+    const params = e.parameter;
+    const safeString = function(val) { return String(val || "").trim(); };
+
+    // Urutan Kolom: A(Timestamp), B(Nama), C(Jabatan), D(WA), E(Medsos), F(Lokasi), G(Deskripsi), H(Momen), I, J, K, L, M(Harapan), N(Status)
+    sheet.appendRow([
+      new Date(),
+      safeString(params.nama),
+      safeString(params.jabatan),
+      safeString(params.whatsapp),
+      safeString(params.mediaSosial),
+      safeString(params.lokasi),
+      safeString(params.deskripsiUsaha),
+      safeString(params.momenBerkesan),
+      "", "", "", "", // I, J, K, L Kosong
+      safeString(params.harapan),
+      "Nominee" // Default Status di Kolom N
+    ]);
+
+    return createJsonResponse({ result: "success" });
+  } catch (err) {
+    return createJsonResponse({ error: err.toString() });
+  }
 }
 
 function createJsonResponse(obj) {

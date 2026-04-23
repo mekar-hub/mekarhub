@@ -80,7 +80,7 @@ const FormCalonFigur = () => {
 
       // Kirim ke Google Apps Script
       await fetch(
-        "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec",
+        "https://script.google.com/macros/s/AKfycbyI0lzKRhO5OrJtUrQIBmxgdL3pRkM-DA_EpTlzBMHEaMRulGLwVOl0UKm4CdwdgnsD/exec",
         {
           method: "POST",
           mode: "no-cors",
