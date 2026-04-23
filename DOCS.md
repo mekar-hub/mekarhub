@@ -53,7 +53,7 @@ Backend sekarang menggunakan satu skrip terpusat yang mengelola kedua spreadshee
 ### Fitur Utama GAS:
 1. **Integrated Access**: Menggunakan `openById` untuk mengakses data klien dan figur dalam satu pintu API.
 2. **Auto-Document**: Membuat MoU dan Brief secara otomatis ke Google Drive.
-3. **Public Access**: Pengaturan Deployment harus diset ke **"Anyone"** agar dashboard dapat menarik data tanpa kendala CORS.
+ 3. **Public Access**: Pengaturan Deployment harus diset ke **"Anyone"** agar dashboard dapat menarik data tanpa kendala CORS.
 
 ---
 
