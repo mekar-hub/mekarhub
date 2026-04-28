@@ -28,6 +28,7 @@ const App = () => (
             <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
             <Route path="/test-notification" element={<TestNotification />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/klien/:clientSlug" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

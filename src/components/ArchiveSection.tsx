@@ -54,6 +54,7 @@ const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
             src={resolvedUrl} 
             alt={figure.name} 
             onError={() => setError(true)}
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
             loading="lazy"
           />

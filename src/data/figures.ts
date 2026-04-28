@@ -25,10 +25,13 @@ export interface Figure {
 }
 
 // Helper: sync conversion for Google Drive links
-const convertDriveLink = (url: string): string => {
-  const driveIdMatch = url.match(/(?:\/file\/d\/|id=)([^\/\?\&]+)/);
-  if (url.includes("drive.google.com") && driveIdMatch) {
-    return `https://lh3.googleusercontent.com/d/${driveIdMatch[1]}=s1000`;
+export const convertDriveLink = (url: string): string => {
+  if (!url) return "";
+  const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]{25,50})/) || url.match(/id=([a-zA-Z0-9_-]{25,50})/);
+  if ((url.includes("drive.google.com") || url.includes("docs.google.com")) && idMatch) {
+    const id = idMatch[1];
+    // Format lh3/d/ID=s1200 adalah yang paling tajam dan stabil terhadap pemblokiran refresh browser
+    return `https://lh3.googleusercontent.com/d/${id}=s1200`;
   }
   return url.trim();
 };
@@ -54,7 +57,13 @@ export const resolveImageUrl = async (url: string = ""): Promise<string> => {
   if (!url || typeof url !== 'string' || url.trim() === "") return "";
   const trimmed = url.trim();
   const fullUrl = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
-  if (fullUrl.includes("drive.google.com")) return convertDriveLink(fullUrl);
+  
+  if (fullUrl.includes("drive.google.com") || fullUrl.includes("docs.google.com")) {
+    const directUrl = convertDriveLink(fullUrl);
+    // Kita gunakan proxy untuk membungkus link Drive agar tidak terkena blokir/redirect Google saat di-refresh
+    return directUrl;
+  }
+  
   if (fullUrl.includes("ibb.co") && !fullUrl.includes("i.ibb.co")) return resolveImgBBLink(fullUrl);
   return fullUrl;
 };

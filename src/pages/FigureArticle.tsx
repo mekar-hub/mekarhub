@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL, resolveImageUrl } from "@/data/figures";
+import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL, resolveImageUrl, convertDriveLink } from "@/data/figures";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -9,7 +9,50 @@ import { Helmet } from "react-helmet-async";
 import logo from "@/assets/Logo_Mekar_Hub_1.png";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useToast } from "@/hooks/use-toast";
-import { Facebook, MessageCircle, Copy, Share2 } from "lucide-react";
+import { Facebook, MessageCircle, Copy, Share2, Youtube, Image as ImageIcon } from "lucide-react";
+
+const YouTubeEmbed = ({ url }: { url: string }) => {
+  const getID = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+  const videoId = getID(url);
+  if (!videoId) return null;
+
+  return (
+    <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl my-12 group">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        className="absolute inset-0 w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="YouTube video player"
+      />
+    </div>
+  );
+};
+
+const StoryImage = ({ url, alt }: { url: string; alt: string }) => {
+  // Langsung konversi link Drive agar gambar muncul instan tanpa menunggu resolved state
+  const finalUrl = (url.includes("drive.google.com") || url.includes("docs.google.com")) 
+    ? convertDriveLink(url) 
+    : url;
+
+  return (
+    <div className="my-10 space-y-3 reveal-on-scroll">
+      <div className="relative rounded-2xl overflow-hidden shadow-lg border border-primary/5">
+        <img 
+          src={finalUrl} 
+          alt={alt} 
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+          className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" 
+        />
+      </div>
+    </div>
+  );
+};
 
 const FigureArticle = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -137,6 +180,8 @@ const FigureArticle = () => {
                 src={resolvedHeroUrl} 
                 alt={figure.name} 
                 onError={() => setImgError(true)}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 className="w-full h-full object-cover grayscale opacity-40 scale-110"
               />
             ) : (
@@ -154,6 +199,8 @@ const FigureArticle = () => {
                 src={resolvedHeroUrl} 
                 alt={figure.name} 
                 onError={() => setImgError(true)}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 className="w-auto h-auto max-w-[90%] max-h-[60vh] md:max-h-[70vh] shadow-2xl rounded-sm object-contain grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105"
               />
             ) : (
@@ -196,13 +243,38 @@ const FigureArticle = () => {
             </span>
           </div>
 
-          <div className="prose prose-lg md:prose-xl max-w-none text-foreground/80 leading-relaxed font-light 
-            prose-p:text-justify prose-p:hyphens-auto prose-p:mb-6 
+          <div className="prose prose-lg md:prose-xl max-w-none text-foreground/90 
+            leading-[1.6] md:leading-relaxed font-normal md:font-light 
+            text-left md:text-justify prose-p:my-0
             prose-blockquote:border-l-4 prose-blockquote:border-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-blockquote:rounded-r-lg
-            first-letter:text-5xl first-letter:font-bold first-letter:text-primary first-letter:mr-3 first-letter:float-left">
-            {figure.story.split('\n').map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
+            first-letter:text-6xl first-letter:font-bold first-letter:text-primary first-letter:mr-3 first-letter:float-left first-letter:mt-1">
+            {figure.story.split('\n').map((line, i) => {
+              const trimmedLine = line.trim();
+              
+              // Cek apakah baris diawali '[' dan diakhiri ']'
+              if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
+                const content = trimmedLine.substring(1, trimmedLine.length - 1).trim();
+                
+                // Hapus prefix YT: atau IMG: jika ada (untuk fleksibilitas)
+                const cleanContent = content.replace(/^(YT:|IMG:)/i, '').trim();
+
+                // Deteksi Video YouTube
+                if (cleanContent.includes('youtube.com') || cleanContent.includes('youtu.be')) {
+                  return <YouTubeEmbed key={i} url={cleanContent} />;
+                }
+                
+                // Deteksi Gambar (Google Drive atau ImgBB)
+                if (cleanContent.includes('drive.google.com') || 
+                    cleanContent.includes('docs.google.com') || 
+                    cleanContent.includes('ibb.co')) {
+                  return <StoryImage key={i} url={cleanContent} alt={`Foto tambahan ${figure.name}`} />;
+                }
+              }
+
+              // Paragraf Normal
+              if (!trimmedLine) return <br key={i} />;
+              return <p key={i}>{trimmedLine}</p>;
+            })}
           </div>
 
           <div className="mt-12 flex justify-center md:justify-start">

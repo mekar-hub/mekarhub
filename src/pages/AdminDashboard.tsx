@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,6 +103,17 @@ interface FigurData {
   idRelasiKlien: string;
 }
 
+// ─── Helper: Slugify ─────────────────────────────────────────────────────────
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Ganti spasi dengan -
+    .replace(/[^\w-]+/g, '')  // Hapus karakter non-word
+    .replace(/--+/g, '-');    // Ganti multiple - dengan satu -
+};
+
 // ─── Sub-komponen: Layar Login ────────────────────────────────────────────────
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pin, setPin] = useState("");
@@ -149,6 +161,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
+  const { clientSlug } = useParams();
+  const navigate = useNavigate();
 
   const [editingKlien, setEditingKlien] = useState<KlienData | null>(null);
   const [editingFigur, setEditingFigur] = useState<FigurData | null>(null);
@@ -162,6 +176,38 @@ const AdminDashboard = () => {
   useEffect(() => {
     setSearch("");
   }, [activeMenu]);
+
+  // Efek untuk Deep Linking Klien
+  useEffect(() => {
+    if (clientSlug && klienList.length > 0 && isLoggedIn) {
+      const found = klienList.find(k => slugify(k.nama) === clientSlug);
+      if (found) {
+        setActiveMenu("klien");
+        setEditingKlien(found);
+      }
+    }
+  }, [clientSlug, klienList, isLoggedIn]);
+
+  const handleEditKlien = (klien: KlienData) => {
+    setEditingKlien(klien);
+    navigate(`/admin/klien/${slugify(klien.nama)}`);
+  };
+
+  const handleCloseKlienModal = () => {
+    setEditingKlien(null);
+    navigate("/admin");
+  };
+
+  // Efek untuk Deep Linking Klien
+  useEffect(() => {
+    if (clientSlug && klienList.length > 0 && isLoggedIn) {
+      const found = klienList.find(k => slugify(k.nama) === clientSlug);
+      if (found) {
+        setActiveMenu("klien");
+        setEditingKlien(found);
+      }
+    }
+  }, [clientSlug, klienList, isLoggedIn]);
 
   const handlePreview = (url: string) => {
     if (!url) return;
@@ -344,7 +390,7 @@ const AdminDashboard = () => {
           {activeMenu === "klien" && (
             <KlienView 
               data={klienList.filter(k => String(k.nama || "").toLowerCase().includes(search.toLowerCase()))} 
-              onEdit={setEditingKlien} onPromote={handlePromote} onPreview={handlePreview} onDelete={(id: number) => setDeletingItem({ id, type: 'klien' })} onWA={(num: any, name: string) => handleWA(num, name)} 
+              onEdit={handleEditKlien} onPromote={handlePromote} onPreview={handlePreview} onDelete={(id: number) => setDeletingItem({ id, type: 'klien' })} onWA={(num: any, name: string) => handleWA(num, name)} 
             />
           )}
           {activeMenu === "figur" && (
@@ -358,7 +404,7 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {editingKlien && <EditKlienModal klien={editingKlien} onClose={() => setEditingKlien(null)} onSave={fetchData} />}
+      {editingKlien && <EditKlienModal klien={editingKlien} onClose={handleCloseKlienModal} onSave={fetchData} />}
       {editingFigur && <EditFigurModal figur={editingFigur} onClose={() => setEditingFigur(null)} onSave={fetchData} />}
       
       {/* DELETE CONFIRMATION MODAL */}
@@ -634,27 +680,36 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
     setLoading(true);
     try {
       const targetRange = `${form.targetProduksiStart} - ${form.targetProduksiEnd}`;
-      const params = new URLSearchParams();
-      params.append("action", "updateKlien");
-      params.append("idBaris", klien.idBaris.toString());
       
-      // Kirim semua field yang ada di form
-      Object.keys(form).forEach(k => {
-        if (k !== "targetProduksiStart" && k !== "targetProduksiEnd") {
-          params.append(k, String((form as any)[k] || ""));
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("action", "updateKlien");
+      bodyParams.append("idBaris", klien.idBaris.toString());
+      
+      // Bungkus semua data form ke dalam URLSearchParams
+      Object.keys(form).forEach(key => {
+        if (key !== "targetProduksiStart" && key !== "targetProduksiEnd") {
+          bodyParams.append(key, String((form as any)[key] || ""));
         }
       });
-      params.append("targetProduksi", targetRange);
-      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
-      await fetch(finalUrl, { method: "GET", mode: "no-cors" });
+      bodyParams.append("targetProduksi", targetRange);
+
+      // Gunakan POST dengan body URLSearchParams (Paling Stabil untuk GAS)
+      await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        body: bodyParams
+      });
+
+      // Beri waktu 5 detik untuk server generate dokumen
       setTimeout(() => {
         setLoading(false);
-        toast({ title: "Update Berhasil" });
-        onSave(); onClose();
-      }, 1000);
-    } catch {
+        toast({ title: "Data & Dokumen Berhasil Diperbarui" });
+        onSave(); 
+        onClose();
+      }, 5000);
+    } catch (error) {
+      console.error("Update Error:", error);
       toast({ title: "Gagal Update", variant: "destructive" });
-    } finally {
       setLoading(false);
     }
   };
@@ -797,17 +852,29 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append("action", "updateFigur");
-      Object.keys(form).forEach(k => params.append(k, (form as any)[k]));
-      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
-      await fetch(finalUrl, { method: "GET", mode: "no-cors" });
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("action", "updateFigur");
+      Object.keys(form).forEach(key => {
+        bodyParams.append(key, String((form as any)[key] || ""));
+      });
+
+      await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        body: bodyParams
+      });
+
       setTimeout(() => {
         setLoading(false);
-        toast({ title: "Artikel Disimpan" });
-        onSave(); onClose();
-      }, 1000);
-    } catch { toast({ title: "Gagal Simpan", variant: "destructive" }); }
+        toast({ title: "Artikel Berhasil Disimpan" });
+        onSave(); 
+        onClose();
+      }, 2000);
+    } catch (error) {
+      console.error("Save Error:", error);
+      toast({ title: "Gagal Simpan", variant: "destructive" });
+      setLoading(false);
+    }
     finally { setLoading(false); }
   };
   return (

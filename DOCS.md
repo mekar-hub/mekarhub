@@ -1,72 +1,41 @@
-# Dokumentasi Mekarhub Integrated System (v3.9.1)
+# Dokumentasi Mekarhub Integrated System (v5.4)
 
 ## 📁 Struktur Database
 
 ### 1. Spreadsheet Klien
 **ID:** `1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q`
-**Fungsi:** Menyimpan data pendaftaran klien dan detail produksi/keuangan.
 
 **Pemetaan Kolom Utama:**
-- **A**: Tanggal (Timestamp)
-- **B**: Nama Lengkap
-- **C**: Jabatan
-- **D**: No. WhatsApp
-- **E**: Sosial Media Brand
-- **F**: Lokasi Brand
-- **G**: Deskripsi Usaha
-- **H**: Momen Berkesan
-- **M**: Harapan
-- **N**: Status / Kategori (Otomatis terisi "Klien" pada pendaftaran baru)
-- **P**: Link Brief (Otomatis)
-- **V**: Link MoU (Otomatis)
-- **W**: Nilai Kontrak
-- **X**: Nomor Rekening
-- **Y**: Target Produksi
-- **Z**: Status Pelunasan
-- **AA**: Nama Lead
-- **AB**: Nama Videografer
-- **AC**: Nama Editor
-- **AD**: Jadwal Visit
-- **AE**: Status Produksi
-- **AF**: Link Hasil Final
+- ... (Sama seperti sebelumnya)
+- **AD (Kolom 30)**: Jadwal Visit
 
 ---
 
-## 🛠️ Google Apps Script (v3.9.1 - Final Production)
+## 🛠️ Google Apps Script (v5.4 - Final Production)
 
-Backend menggunakan skrip terpusat yang mengelola pendaftaran dari website dan manajemen dari dashboard admin.
-
-### Pembaruan v3.9.1:
-1. **Hybrid Method**: Mendukung `doPost` untuk pendaftaran website dan `doGet` untuk dashboard admin.
-2. **Auto-Category**: Pendaftaran baru otomatis ditandai sebagai "Klien" di Kolom N agar selaras dengan filter dashboard.
-3. **Robust Parsing**: Menambahkan logika fallback parsing data untuk memastikan data dari berbagai jenis browser tetap tersimpan di Spreadsheet.
-
----
-
-## 🖥️ Landing Page & Form Kolaborasi (v3.9)
-
-### Fitur Baru:
-- **Premium Loading Animation**: Overlay loading dengan efek glassmorphism dan teks dinamis "Mengirim Kisah Anda...".
-- **Automatic WhatsApp Redirect**: Setelah 5 detik sukses mengirim, sistem otomatis membuka WhatsApp Admin di **Tab Baru**.
-- **Success Modal**: Notifikasi visual yang bersih dengan instruksi langkah selanjutnya.
+### Fitur Terbaru v5.4:
+1. **Sync Jadwal Visit**: Otomatis mengambil data dari Kolom AD (30) untuk dimasukkan ke dokumen Master.
+2. **Placeholder Baru**: Gunakan `[jadwal_visit]` di Google Docs Master untuk menampilkan tanggal visit klien.
+3. **Format Tanggal Otomatis**: Menghasilkan format `dd mm yyyy` (Contoh: 28 04 2026) pada dokumen.
+4. **Stable Body POST**: Mendukung pengiriman narasi sangat panjang melalui `URLSearchParams`.
 
 ---
 
-## 🚀 Admin Dashboard (Responsive v3.0)
+## 🚀 Admin Dashboard (Deep Linking v3.5)
 
-**URL:** `/admin` | **PIN:** `mekarhub2026`
+**URL:** `/admin` | **PIN:** `mekarhub2026` | **Deep Link:** `/admin/klien/[slug-nama]`
 
-### Fitur Unggulan:
-- **Mobile First Design**: Tampilan tabel otomatis berubah menjadi kartu (Card View) di layar ponsel.
-- **Financial Center**: Perhitungan otomatis nominal DP 50% saat Nilai Kontrak diisi.
-- **WhatsApp Professional**: Template sapaan otomatis yang dipersonalisasi sesuai nama klien.
+### Prosedur Update Dokumen Master:
+1. Di Google Docs Master Creative Brief, ubah label **Target Produksi** menjadi **Jadwal Visit**.
+2. Ganti placeholder `[deadline_shooting]` menjadi `[jadwal_visit]`.
+3. Klik **Update Data Produksi** di Dashboard Admin untuk memproses ulang dokumen klien.
 
 ---
 
 ## 🚀 Cara Update / Deploy
 
-1. Pastikan kode di Google Apps Script menggunakan versi terbaru (v3.9.1).
-2. Klik **Deploy** > **Manage Deployments**.
-3. Klik ikon **Pensil (Edit)** pada deployment aktif.
+1. Salin kode dari file `apps_script_sheet.js`.
+2. Buka Google Apps Script Editor.
+3. Klik **Deploy** > **Manage Deployments**.
 4. Pilih **Version: New Version**, lalu klik **Deploy**.
-5. Pastikan URL Script sudah sama dengan variabel `GAS_ENDPOINT` di file `AdminDashboard.tsx` dan `FormCalonFigur.tsx`.
+5. Pastikan URL Script sama dengan variabel `GAS_ENDPOINT` di frontend.
