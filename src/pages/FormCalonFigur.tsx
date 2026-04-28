@@ -28,7 +28,7 @@ const FormCalonFigur = () => {
         const waUrl = `https://wa.me/6281333277361?text=${encodeURIComponent(
           `Halo Mekarhub! Saya ${submittedName} baru saja mengisi Form Kisah Mekarhub. Mohon ditindaklanjuti ya 🙏`
         )}`;
-        window.location.href = waUrl;
+        window.open(waUrl, "_blank");
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -68,7 +68,6 @@ const FormCalonFigur = () => {
     setLoading(true);
     try {
       const formData = new URLSearchParams();
-      // Mengikuti urutan Kolom B - M (dengan I-L kosong di backend)
       formData.append("nama", form.nama.trim());
       formData.append("jabatan", form.jabatan.trim());
       formData.append("whatsapp", form.whatsapp.trim());
@@ -78,8 +77,8 @@ const FormCalonFigur = () => {
       formData.append("momenBerkesan", form.momenBerkesan.trim());
       formData.append("harapan", form.harapan.trim());
 
-      // Kirim ke Google Apps Script
-      await fetch(
+      // 1. Kirim ke Google Apps Script (Sheet)
+      const gsPromise = fetch(
         "https://script.google.com/macros/s/AKfycbyI0lzKRhO5OrJtUrQIBmxgdL3pRkM-DA_EpTlzBMHEaMRulGLwVOl0UKm4CdwdgnsD/exec",
         {
           method: "POST",
@@ -87,6 +86,16 @@ const FormCalonFigur = () => {
           body: formData,
         }
       );
+
+      // 2. Kirim Notifikasi Email ke Admin
+      const notifyPromise = fetch("/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      // Tunggu keduanya (kita gunakan allSettled agar jika salah satu gagal tidak memblokir sukses lainnya)
+      await Promise.allSettled([gsPromise, notifyPromise]);
 
       setSubmittedName(form.nama.trim());
       setIsSuccessModalOpen(true);
@@ -101,6 +110,7 @@ const FormCalonFigur = () => {
         harapan: "",
       });
     } catch (err) {
+      console.error("Submission error:", err);
       toast({
         title: "Gagal Mengirim",
         description: "Terjadi gangguan koneksi. Silakan coba beberapa saat lagi.",
@@ -114,6 +124,24 @@ const FormCalonFigur = () => {
   return (
     <main className="min-h-screen bg-[#FDFDFD]">
       <Navbar />
+
+      {/* PREMIUM LOADING OVERLAY */}
+      {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="text-center space-y-6">
+            <div className="relative">
+              <div className="w-24 h-24 border-4 border-primary/10 border-t-primary rounded-full animate-spin mx-auto" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3 h-3 bg-primary rounded-full animate-ping" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-primary font-serif italic text-xl animate-pulse">Mengirim Kisah Anda...</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-bold">Mohon tunggu sejenak</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <section className="pt-32 pb-24 lg:pt-40 lg:pb-32 px-6">
         <div className="max-w-3xl mx-auto">
@@ -280,6 +308,8 @@ const FormCalonFigur = () => {
           <div className="mt-10 space-y-4">
              <a
               href={`https://wa.me/6281333277361?text=${encodeURIComponent(`Halo Mekarhub! Saya ${submittedName} baru saja mengisi Form Kisah Mekarhub. Mohon ditindaklanjuti ya 🙏`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-3 w-full bg-[#25D366] text-white py-5 rounded-2xl font-bold shadow-lg shadow-green-200 hover:scale-[1.02] active:scale-95 transition-all"
             >
               <MessageSquare size={20} /> Hubungi Admin Sekarang
@@ -304,3 +334,4 @@ const Loader2 = ({ className }: { className?: string }) => (
 );
 
 export default FormCalonFigur;
+

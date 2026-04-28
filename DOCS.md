@@ -1,4 +1,4 @@
-# Dokumentasi Mekarhub Integrated System (v3.0)
+# Dokumentasi Mekarhub Integrated System (v3.9.1)
 
 ## 📁 Struktur Database
 
@@ -16,7 +16,7 @@
 - **G**: Deskripsi Usaha
 - **H**: Momen Berkesan
 - **M**: Harapan
-- **N**: Status (Nominee / Client)
+- **N**: Status / Kategori (Otomatis terisi "Klien" pada pendaftaran baru)
 - **P**: Link Brief (Otomatis)
 - **V**: Link MoU (Otomatis)
 - **W**: Nilai Kontrak
@@ -30,56 +30,43 @@
 - **AE**: Status Produksi
 - **AF**: Link Hasil Final
 
-### 2. Spreadsheet Figur
-**ID:** `18iGYoxGPp6A0CuAtw0L8qMj9Tth4XzBglA-sU4WkyxE`
-**Fungsi:** Menyimpan data narasi cerita yang akan ditampilkan di website.
+---
 
-**Pemetaan Kolom:**
-- **A**: ID (Auto)
-- **B**: Nama Figur
-- **C**: Judul Cerita
-- **D**: Kategori
-- **G**: Slug URL
-- **H**: Narasi Cerita
-- **J**: Link Gambar Utama
-- **K**: ID Relasi Klien (Penghubung ke Spreadsheet Klien)
+## 🛠️ Google Apps Script (v3.9.1 - Final Production)
+
+Backend menggunakan skrip terpusat yang mengelola pendaftaran dari website dan manajemen dari dashboard admin.
+
+### Pembaruan v3.9.1:
+1. **Hybrid Method**: Mendukung `doPost` untuk pendaftaran website dan `doGet` untuk dashboard admin.
+2. **Auto-Category**: Pendaftaran baru otomatis ditandai sebagai "Klien" di Kolom N agar selaras dengan filter dashboard.
+3. **Robust Parsing**: Menambahkan logika fallback parsing data untuk memastikan data dari berbagai jenis browser tetap tersimpan di Spreadsheet.
 
 ---
 
-## 🛠️ Google Apps Script (v3.0 - Integrated)
+## 🖥️ Landing Page & Form Kolaborasi (v3.9)
 
-Backend sekarang menggunakan satu skrip terpusat yang mengelola kedua spreadsheet sekaligus.
-
-### Fitur Utama GAS:
-1. **Integrated Access**: Menggunakan `openById` untuk mengakses data klien dan figur dalam satu pintu API.
-2. **Auto-Document**: Membuat MoU dan Brief secara otomatis ke Google Drive.
- 3. **Public Access**: Pengaturan Deployment harus diset ke **"Anyone"** agar dashboard dapat menarik data tanpa kendala CORS.
+### Fitur Baru:
+- **Premium Loading Animation**: Overlay loading dengan efek glassmorphism dan teks dinamis "Mengirim Kisah Anda...".
+- **Automatic WhatsApp Redirect**: Setelah 5 detik sukses mengirim, sistem otomatis membuka WhatsApp Admin di **Tab Baru**.
+- **Success Modal**: Notifikasi visual yang bersih dengan instruksi langkah selanjutnya.
 
 ---
 
-## 🖥️ Admin Dashboard (Responsive v3.0)
+## 🚀 Admin Dashboard (Responsive v3.0)
 
 **URL:** `/admin` | **PIN:** `mekarhub2026`
 
-### Fitur Unggulan Baru:
-- **Mobile First Design**: 
-  - **Card View**: Tabel otomatis berubah menjadi kartu di layar HP.
-  - **Hamburger Menu**: Navigasi sidebar yang dapat disembunyikan.
-  - **No Auto-Zoom**: Font input 16px untuk kenyamanan mengetik di seluler.
-- **Financial Center**: 
-  - **Live DP 50%**: Perhitungan otomatis nominal DP saat Nilai Kontrak diisi.
-- **WhatsApp Professional**:
-  - Tombol WhatsApp otomatis menyertakan template sapaan profesional: *"Halo [Nama], salam hangat dari Mekarhub. Kami telah menerima kiriman kisah Anda..."*
-- **Live Preview Modal**:
-  - Pratinjau dokumen (Brief/MoU) menggunakan modal layar penuh dengan sistem otomatis mengubah link `/edit` menjadi `/preview`.
+### Fitur Unggulan:
+- **Mobile First Design**: Tampilan tabel otomatis berubah menjadi kartu (Card View) di layar ponsel.
+- **Financial Center**: Perhitungan otomatis nominal DP 50% saat Nilai Kontrak diisi.
+- **WhatsApp Professional**: Template sapaan otomatis yang dipersonalisasi sesuai nama klien.
 
 ---
 
 ## 🚀 Cara Update / Deploy
 
-1. Salin kode dari `apps_script_sheet.js` (v2.8).
-2. Tempel di editor Google Apps Script (Sangat disarankan di Apps Script file **Figur**).
-3. Klik **Deploy** > **New Deployment**.
-4. Pilih **Web App**, Jalankan sebagai **Me**, Akses **Anyone**.
-5. Salin URL baru tersebut ke variabel `GAS_ENDPOINT` di file `AdminDashboard.tsx` dan `FormCalonFigur.tsx`.
-6. Lakukan **Hard Refresh (Ctrl + F5)** pada browser setelah update frontend.
+1. Pastikan kode di Google Apps Script menggunakan versi terbaru (v3.9.1).
+2. Klik **Deploy** > **Manage Deployments**.
+3. Klik ikon **Pensil (Edit)** pada deployment aktif.
+4. Pilih **Version: New Version**, lalu klik **Deploy**.
+5. Pastikan URL Script sudah sama dengan variabel `GAS_ENDPOINT` di file `AdminDashboard.tsx` dan `FormCalonFigur.tsx`.

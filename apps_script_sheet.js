@@ -1,7 +1,6 @@
 /**
- * Google Apps Script - Mekarhub Integrated (v3.8 - Full Stability & Delete Fix)
- * SPREADSHEET KLIEN: 1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q
- * SPREADSHEET FIGUR: 18iGYoxGPp6A0CuAtw0L8qMj9Tth4XzBglA-sU4WkyxE
+ * Google Apps Script - Mekarhub Integrated (v3.9.1 - Final Production)
+ * Mendukung: Landing Page (POST) & Admin Dashboard (GET)
  */
 
 var SS_KLIEN_ID = "1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q";
@@ -10,6 +9,51 @@ var FOLDER_ID = "1D4fLm-jDvpIUjtZAIZ7CVrPrUlSRzaGd";
 var MOU_TEMPLATE_ID = "1CMQpLqKrMTnUp88RAMPYiIZzQk3QZjkuLRAxtXW0W54";
 var BRIEF_TEMPLATE_ID = "1GXSrTrczsJfn39McHk7aUoG5Bizx2vihzUJeRqpRuOQ";
 
+// --- HANDLE DATA DARI WEBSITE (LANDING PAGE) ---
+function doPost(e) {
+  try {
+    const ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
+    const sheet = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
+    
+    // Tangkap data dari body request
+    var params = e.parameter;
+    if (Object.keys(params).length === 0 && e.postData && e.postData.contents) {
+      try {
+        params = JSON.parse(e.postData.contents);
+      } catch (i) {
+        const parts = e.postData.contents.split('&');
+        params = {};
+        parts.forEach(p => {
+          const pair = p.split('=');
+          if (pair.length === 2) params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+        });
+      }
+    }
+
+    const safeString = function(val) { return String(val || "").trim(); };
+
+    // Masukkan ke Spreadsheet Klien
+    sheet.appendRow([
+      new Date(),
+      safeString(params.nama),
+      safeString(params.jabatan),
+      safeString(params.whatsapp),
+      safeString(params.mediaSosial),
+      safeString(params.lokasi),
+      safeString(params.deskripsiUsaha),
+      safeString(params.momenBerkesan),
+      "", "", "", "", // Kolom I, J, K, L (Kosong)
+      safeString(params.harapan),
+      "Klien" // Kolom N: Otomatis terisi "Klien" agar muncul di Dashboard
+    ]);
+
+    return createJsonResponse({ result: "success" });
+  } catch (err) {
+    return createJsonResponse({ error: err.toString() });
+  }
+}
+
+// --- HANDLE DATA DARI ADMIN DASHBOARD ---
 function doGet(e) {
   try {
     const action = e.parameter.action;
@@ -93,36 +137,21 @@ function doGet(e) {
       if (params.statusProduksi) sheet.getRange(baris, 31).setValue(safeString(params.statusProduksi));
       if (params.linkHasilFinal) sheet.getRange(baris, 32).setValue(safeString(params.linkHasilFinal));
 
-      // --- OTOMATISASI DOKUMEN ---
-      // Ambil data terbaru dari baris tersebut untuk pengisian dokumen
       const updatedData = sheet.getRange(baris, 1, 1, 32).getValues()[0];
       const dataObj = {
-        idBaris: baris,
-        nama: updatedData[1],
-        jabatan: updatedData[2],
-        whatsapp: updatedData[3],
-        mediaSosial: updatedData[4],
-        lokasi: updatedData[5],
-        deskripsiUsaha: updatedData[6],
-        momenBerkesan: updatedData[7],
-        harapan: updatedData[12],
-        ideBesar: updatedData[16],
-        visualTone: updatedData[17],
-        hook: updatedData[18],
-        catatanTeknis: updatedData[19],
-        namaLead: updatedData[26],
-        namaVideografer: updatedData[27],
-        namaEditor: updatedData[28],
-        targetProduksi: updatedData[24]
+        idBaris: baris, nama: updatedData[1], jabatan: updatedData[2],
+        whatsapp: updatedData[3], mediaSosial: updatedData[4], lokasi: updatedData[5],
+        deskripsiUsaha: updatedData[6], momenBerkesan: updatedData[7], harapan: updatedData[12],
+        ideBesar: updatedData[16], visualTone: updatedData[17], hook: updatedData[18],
+        catatanTeknis: updatedData[19], namaLead: updatedData[26], namaVideografer: updatedData[27],
+        namaEditor: updatedData[28], targetProduksi: updatedData[24]
       };
 
-      // Generate Dokumen Baru (Brief & MoU)
       const briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
       const mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
 
-      // Simpan link dokumen ke Spreadsheet
-      if (briefUrl) sheet.getRange(baris, 16).setValue(briefUrl); // Kolom P
-      if (mouUrl) sheet.getRange(baris, 22).setValue(mouUrl);     // Kolom V
+      if (briefUrl) sheet.getRange(baris, 16).setValue(briefUrl);
+      if (mouUrl) sheet.getRange(baris, 22).setValue(mouUrl);
 
       return createJsonResponse({ result: "success", brief: briefUrl, mou: mouUrl });
     }
@@ -168,13 +197,9 @@ function doGet(e) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0]) {
           result.push({
-            idBaris: i + 1,
-            nama: String(data[i][1] || ""),
-            judul: String(data[i][2] || ""),
-            kategori: String(data[i][3] || ""),
-            slug: String(data[i][6] || ""),
-            narasi: String(data[i][7] || ""),
-            image: String(data[i][9] || ""),
+            idBaris: i + 1, nama: String(data[i][1] || ""), judul: String(data[i][2] || ""),
+            kategori: String(data[i][3] || ""), slug: String(data[i][6] || ""),
+            narasi: String(data[i][7] || ""), image: String(data[i][9] || ""),
             idRelasiKlien: String(data[i][10] || "")
           });
         }
@@ -200,34 +225,6 @@ function doGet(e) {
   }
 }
 
-function doPost(e) {
-  try {
-    const ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
-    const sheet = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
-    const params = e.parameter;
-    const safeString = function(val) { return String(val || "").trim(); };
-
-    // Urutan Kolom: A(Timestamp), B(Nama), C(Jabatan), D(WA), E(Medsos), F(Lokasi), G(Deskripsi), H(Momen), I, J, K, L, M(Harapan), N(Status)
-    sheet.appendRow([
-      new Date(),
-      safeString(params.nama),
-      safeString(params.jabatan),
-      safeString(params.whatsapp),
-      safeString(params.mediaSosial),
-      safeString(params.lokasi),
-      safeString(params.deskripsiUsaha),
-      safeString(params.momenBerkesan),
-      "", "", "", "", // I, J, K, L Kosong
-      safeString(params.harapan),
-      "Nominee" // Default Status di Kolom N
-    ]);
-
-    return createJsonResponse({ result: "success" });
-  } catch (err) {
-    return createJsonResponse({ error: err.toString() });
-  }
-}
-
 function createJsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
          .setMimeType(ContentService.MimeType.JSON);
@@ -242,31 +239,23 @@ function generateDocument(templateId, fileName, data) {
     const doc = DocumentApp.openById(docId);
     const body = doc.getBody();
 
-    // Mapping Placeholder sesuai redaksi yang Anda berikan
     body.replaceText("\\[nama\\]", data.nama || "-");
     body.replaceText("\\[jabatan\\]", data.jabatan || "-");
     body.replaceText("\\[whatsapp\\]", data.whatsapp || "-");
     body.replaceText("\\[mediaSosial\\]", data.mediaSosial || "-");
     body.replaceText("\\[lokasi\\]", data.lokasi || "-");
-    
-    // Rangkuman Narasi
     body.replaceText("\\[identitasSpirit\\]", data.deskripsiUsaha || "-");
     body.replaceText("\\[titikBalik\\]", data.momenBerkesan || "-");
     body.replaceText("\\[harapan\\]", data.harapan || "-");
-    
-    // Pengembangan Riset
     body.replaceText("\\[ideBesar\\]", data.ideBesar || "-");
     body.replaceText("\\[visualTone\\]", data.visualTone || "-");
     body.replaceText("\\[hook\\]", data.hook || "-");
     body.replaceText("\\[catatanTeknis\\]", data.catatanTeknis || "-");
-    
-    // Logistik & Tim
     body.replaceText("\\[nama_lead\\]", data.namaLead || "-");
     body.replaceText("\\[nama_videografer\\]", data.namaVideografer || "-");
     body.replaceText("\\[nama_editor\\]", data.namaEditor || "-");
     body.replaceText("\\[deadline_shooting\\]", data.targetProduksi || "-");
     
-    // Nomor Surat & Tanggal
     const tgl = Utilities.formatDate(new Date(), "GMT+7", "dd MMMM yyyy");
     body.replaceText("\\[nomorSurat\\]", "MKH/" + data.idBaris + "/" + Utilities.formatDate(new Date(), "GMT+7", "MM/yyyy"));
     body.replaceText("\\[tanggal\\]", tgl);
@@ -274,7 +263,6 @@ function generateDocument(templateId, fileName, data) {
     doc.saveAndClose();
     return copy.getUrl();
   } catch (e) {
-    Logger.log("Error Generate Doc: " + e.toString());
     return null;
   }
 }
