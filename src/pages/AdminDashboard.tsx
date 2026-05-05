@@ -32,7 +32,7 @@ import logoRed from "@/assets/Logo_Mekar_Hub_1.png";
 
 // ─── Konstanta ──────────────────────────────────────────────────────────────
 const ADMIN_PIN = "mekarhub2026";
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyI0lzKRhO5OrJtUrQIBmxgdL3pRkM-DA_EpTlzBMHEaMRulGLwVOl0UKm4CdwdgnsD/exec";
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
 
 // ─── Tipe Data ───────────────────────────────────────────────────────────────
 interface KlienData {
@@ -102,6 +102,22 @@ interface FigurData {
   image: string;
   idRelasiKlien: string;
 }
+
+const emptyFigur = (): FigurData => ({
+  idBaris: 0,
+  nama: "",
+  judul: "",
+  kategori: "",
+  slug: "",
+  narasi: "",
+  image: "",
+  idRelasiKlien: "",
+});
+
+const normalizeFigur = (figur: Partial<FigurData> | null | undefined): FigurData => ({
+  ...emptyFigur(),
+  ...(figur || {}),
+});
 
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
 const slugify = (text: string) => {
@@ -291,8 +307,7 @@ const AdminDashboard = () => {
 
   const handlePromote = (klien: KlienData) => {
     setActiveMenu("figur");
-    setEditingFigur({
-      idBaris: 0,
+    setEditingFigur(normalizeFigur({
       nama: klien.nama,
       judul: klien.ideBesar || "",
       kategori: "Profil Bisnis",
@@ -300,7 +315,7 @@ const AdminDashboard = () => {
       narasi: "",
       image: "",
       idRelasiKlien: klien.idBaris.toString()
-    });
+    }));
   };
 
   if (!isLoggedIn) return (
@@ -396,7 +411,7 @@ const AdminDashboard = () => {
           {activeMenu === "figur" && (
             <FigurView 
               data={figurList.filter(f => String(f.nama || "").toLowerCase().includes(search.toLowerCase()))} 
-              onEdit={setEditingFigur} onAdd={() => setEditingFigur({ idBaris: 0, nama: "", judul: "", kategori: "", slug: "", narasi: "", image: "", idRelasiKlien: "" })} 
+              onEdit={(figur: FigurData) => setEditingFigur(normalizeFigur(figur))} onAdd={() => setEditingFigur(emptyFigur())} 
               onPreview={setPreviewArticle}
               onDelete={(id: number) => setDeletingItem({ id, type: 'figur' })}
             />
@@ -845,7 +860,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
 };
 
 const EditFigurModal = ({ figur, onClose, onSave }: any) => {
-  const [form, setForm] = useState<FigurData>(figur);
+  const [form, setForm] = useState<FigurData>(() => normalizeFigur(figur));
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const handleSave = async (e: React.FormEvent) => {
@@ -854,9 +869,14 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
     try {
       const bodyParams = new URLSearchParams();
       bodyParams.append("action", "updateFigur");
-      Object.keys(form).forEach(key => {
-        bodyParams.append(key, String((form as any)[key] || ""));
-      });
+      bodyParams.append("idBaris", String(form.idBaris || 0));
+      bodyParams.append("nama", form.nama || "");
+      bodyParams.append("judul", form.judul || "");
+      bodyParams.append("kategori", form.kategori || "");
+      bodyParams.append("slug", form.slug || "");
+      bodyParams.append("narasi", form.narasi || "");
+      bodyParams.append("image", form.image || "");
+      bodyParams.append("idRelasiKlien", form.idRelasiKlien || "");
 
       await fetch(GAS_ENDPOINT, {
         method: "POST",

@@ -31,8 +31,8 @@ function handleRequest(e) {
       }
     }
     
-    var action = params.action;
     var safe = function(val) { return String(val || "").trim(); };
+    var action = safe(params.action || params.formType);
     var ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
     var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
 

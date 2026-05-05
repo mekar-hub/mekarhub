@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CheckCircle2, MessageSquare, Send } from "lucide-react";
 
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
+
 const FormCalonFigur = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -68,6 +70,8 @@ const FormCalonFigur = () => {
     setLoading(true);
     try {
       const formData = new URLSearchParams();
+      formData.append("action", "register");
+      formData.append("formType", "register");
       formData.append("nama", form.nama.trim());
       formData.append("jabatan", form.jabatan.trim());
       formData.append("whatsapp", form.whatsapp.trim());
@@ -76,16 +80,17 @@ const FormCalonFigur = () => {
       formData.append("deskripsiUsaha", form.deskripsiUsaha.trim());
       formData.append("momenBerkesan", form.momenBerkesan.trim());
       formData.append("harapan", form.harapan.trim());
+      const encodedBody = formData.toString();
 
       // 1. Kirim ke Google Apps Script (Sheet)
-      const gsPromise = fetch(
-        "https://script.google.com/macros/s/AKfycbyI0lzKRhO5OrJtUrQIBmxgdL3pRkM-DA_EpTlzBMHEaMRulGLwVOl0UKm4CdwdgnsD/exec",
-        {
-          method: "POST",
-          mode: "no-cors",
-          body: formData,
-        }
-      );
+      const gsPromise = fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: encodedBody,
+      });
 
       // 2. Kirim Notifikasi Email ke Admin
       const notifyPromise = fetch("/api/notify-admin", {
