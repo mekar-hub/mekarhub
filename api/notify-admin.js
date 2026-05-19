@@ -15,6 +15,8 @@ export default async function handler(req, res) {
   } = req.body;
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'mekarhub@gmail.com';
+  const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Mekarhub <onboarding@resend.dev>';
 
   if (!RESEND_API_KEY) {
     console.error("RESEND_API_KEY not found in environment variables");
@@ -29,8 +31,8 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Mekarhub <onboarding@resend.dev>',
-        to: 'mekarhub@gmail.com',
+        from: RESEND_FROM_EMAIL,
+        to: ADMIN_NOTIFICATION_EMAIL,
         subject: `[BARU] Form Kolaborasi Mekarhub: ${nama}`,
         html: `
           <div style="font-family:serif;max-width:600px;margin:auto;border:1px solid #eee;padding:40px;border-radius:20px;">

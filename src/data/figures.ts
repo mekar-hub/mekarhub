@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 
 // URL CSV dari Google Sheets (Ganti dengan URL Publish to Web Anda)
-export const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
+export const SHEET_CSV_URL = import.meta.env.VITE_SHEET_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
 
 export interface Figure {
   id: number;

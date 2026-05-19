@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CheckCircle2, MessageSquare, Send } from "lucide-react";
 
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
+const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
 
 const FormCalonFigur = () => {
   const { toast } = useToast();

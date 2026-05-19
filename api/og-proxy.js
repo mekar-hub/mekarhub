@@ -2,7 +2,8 @@ import Papa from 'papaparse';
 
 export default async function handler(req, res) {
   const { slug } = req.query;
-  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
+  const CSV_URL = process.env.SHEET_CSV_URL || process.env.VITE_SHEET_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
+  const SITE_BASE_URL = process.env.SITE_BASE_URL || "https://mekarhub.id";
 
   try {
     // 1. Fetch CSV from Google Sheets
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
     }
     // Fallback if empty
     if (!imageUrl) {
-        imageUrl = "https://mekarhub.id/Logo_Mekar_Hub_1.png"; // Fallback to logo on domain
+        imageUrl = `${SITE_BASE_URL}/Logo_Mekar_Hub_1.png`; // Fallback to logo on domain
     }
 
     // 4. Generate Static HTML for Bots
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
     <meta property="og:title" content="${figure.name} - Mekarhub">
     <meta property="og:description" content="${figure.story ? figure.story.substring(0, 160) : ''}">
     <meta property="og:image" content="${imageUrl}">
-    <meta property="og:url" content="https://mekarhub.id/kisah/${slug}">
+    <meta property="og:url" content="${SITE_BASE_URL}/kisah/${slug}">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">

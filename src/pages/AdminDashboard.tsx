@@ -32,7 +32,7 @@ import logoRed from "@/assets/Logo_Mekar_Hub_1.png";
 
 // ─── Konstanta ──────────────────────────────────────────────────────────────
 const ADMIN_PIN = "mekarhub2026";
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
+const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
 
 // ─── Tipe Data ───────────────────────────────────────────────────────────────
 interface KlienData {

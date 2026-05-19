@@ -73,4 +73,38 @@
 2. Buka Google Apps Script Editor.
 3. Klik `Deploy` > `Manage Deployments`.
 4. Pilih `Version: New Version`, lalu klik `Deploy`.
-5. Pastikan URL Script sama dengan variabel `GAS_ENDPOINT` di frontend.
+5. Pastikan URL Script sama dengan variabel `VITE_GAS_ENDPOINT` di environment frontend.
+
+## Environment Variables
+
+Salin `.env.example` menjadi `.env.local` untuk development lokal. Jangan commit `.env` atau `.env.local` karena dapat berisi secret.
+
+### Frontend
+
+Variabel Vite harus memakai prefix `VITE_` karena nilainya akan ikut masuk ke bundle browser.
+
+- `VITE_GAS_ENDPOINT`: URL deployment Google Apps Script untuk form publik dan admin dashboard.
+- `VITE_SHEET_CSV_URL`: URL published CSV Google Sheets untuk arsip figur.
+
+### Serverless API
+
+Variabel ini dipakai oleh function di folder `api/` dan tidak perlu prefix `VITE_`, kecuali memang perlu dibaca browser.
+
+- `SITE_BASE_URL`: domain publik, dipakai oleh OG proxy untuk metadata share artikel. Default aman: `https://mekarhub.id`.
+- `RESEND_API_KEY`: API key Resend untuk `/api/notify-admin`. Wajib di Vercel agar email terkirim.
+- `ADMIN_NOTIFICATION_EMAIL`: email tujuan notifikasi form. Default: `mekarhub@gmail.com`.
+- `RESEND_FROM_EMAIL`: sender email Resend. Default: `Mekarhub <onboarding@resend.dev>`.
+
+### Setup Lokal
+
+1. Jalankan `npm install` jika dependency belum terpasang.
+2. Salin `.env.example` ke `.env.local`.
+3. Isi `RESEND_API_KEY` jika ingin mengetes email notification.
+4. Jalankan `npm.cmd run dev` di Windows jika PowerShell memblokir `npm.ps1`; selain itu `npm run dev` tetap valid.
+
+### Setup Vercel
+
+1. Buka Vercel Project Settings > Environment Variables.
+2. Tambahkan `VITE_GAS_ENDPOINT`, `VITE_SHEET_CSV_URL`, `SITE_BASE_URL`, `RESEND_API_KEY`, `ADMIN_NOTIFICATION_EMAIL`, dan `RESEND_FROM_EMAIL`.
+3. Terapkan ke environment Production dan Preview sesuai kebutuhan.
+4. Redeploy setelah mengubah environment variable.
