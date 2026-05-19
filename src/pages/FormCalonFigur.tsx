@@ -23,6 +23,7 @@ const FormCalonFigur = () => {
   const [loading, setLoading] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
+  const [notificationWarning, setNotificationWarning] = useState(false);
 
   useEffect(() => {
     if (isSuccessModalOpen) {
@@ -68,6 +69,7 @@ const FormCalonFigur = () => {
     }
 
     setLoading(true);
+    setNotificationWarning(false);
     try {
       const formData = new URLSearchParams();
       formData.append("action", "register");
@@ -81,9 +83,10 @@ const FormCalonFigur = () => {
       formData.append("momenBerkesan", form.momenBerkesan.trim());
       formData.append("harapan", form.harapan.trim());
       const encodedBody = formData.toString();
+      const submittedNameValue = form.nama.trim();
 
       // 1. Kirim ke Google Apps Script (Sheet)
-      const gsPromise = fetch(GAS_ENDPOINT, {
+      await fetch(GAS_ENDPOINT, {
         method: "POST",
         mode: "no-cors",
         headers: {
@@ -93,16 +96,26 @@ const FormCalonFigur = () => {
       });
 
       // 2. Kirim Notifikasi Email ke Admin
-      const notifyPromise = fetch("/api/notify-admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+      try {
+        const notifyResponse = await fetch("/api/notify-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
 
-      // Tunggu keduanya (kita gunakan allSettled agar jika salah satu gagal tidak memblokir sukses lainnya)
-      await Promise.allSettled([gsPromise, notifyPromise]);
+        if (!notifyResponse.ok) {
+          throw new Error("Notification request failed");
+        }
+      } catch (notifyError) {
+        console.error("Notification error:", notifyError);
+        setNotificationWarning(true);
+        toast({
+          title: "Kisah Terkirim",
+          description: "Data kisah berhasil dikirim, tetapi notifikasi admin mungkin belum terkirim otomatis.",
+        });
+      }
 
-      setSubmittedName(form.nama.trim());
+      setSubmittedName(submittedNameValue);
       setIsSuccessModalOpen(true);
       setForm({
         nama: "",
@@ -118,7 +131,7 @@ const FormCalonFigur = () => {
       console.error("Submission error:", err);
       toast({
         title: "Gagal Mengirim",
-        description: "Terjadi gangguan koneksi. Silakan coba beberapa saat lagi.",
+        description: "Kisah belum berhasil dikirim. Data Anda tetap tersimpan di form, silakan coba beberapa saat lagi.",
         variant: "destructive",
       });
     } finally {
@@ -308,6 +321,11 @@ const FormCalonFigur = () => {
             <AlertDialogDescription className="text-gray-400 text-lg leading-relaxed mt-4">
               Terima kasih, <strong>{submittedName}</strong>. <br />
               Kisah Anda sedang kami proses. Dalam 5 detik, Anda akan diarahkan ke WhatsApp Admin untuk verifikasi jadwal liputan.
+              {notificationWarning && (
+                <span className="block mt-4 text-sm text-amber-600">
+                  Catatan: notifikasi email admin mungkin belum terkirim otomatis. Silakan gunakan tombol WhatsApp di bawah untuk konfirmasi langsung.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-10 space-y-4">

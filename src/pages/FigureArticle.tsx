@@ -65,6 +65,7 @@ const FigureArticle = () => {
   const { toast } = useToast();
   const [resolvedHeroUrl, setResolvedHeroUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [offsetY, setOffsetY] = useState(0);
 
@@ -83,6 +84,12 @@ const FigureArticle = () => {
   }, []);
 
   useEffect(() => {
+    const fallbackFigure = defaultFigures.find((f) => f.slug === slug) || null;
+    setFigure(fallbackFigure);
+    setResolvedHeroUrl(undefined);
+    setImgError(false);
+    setFetchError(null);
+
     if (!SHEET_CSV_URL) return;
     
     setIsLoading(true);
@@ -92,9 +99,13 @@ const FigureArticle = () => {
         if (found) {
           setFigure(found);
           setImgError(false); // Reset error if we get new data
+          setFetchError(null);
         }
       })
-      .catch((err) => console.error("Gagal mengambil data dari Google Sheets:", err))
+      .catch((err) => {
+        console.error("Gagal mengambil data dari Google Sheets:", err);
+        setFetchError("Koneksi ke arsip terbaru sedang bermasalah.");
+      })
       .finally(() => setIsLoading(false));
   }, [slug]);
 
@@ -156,20 +167,36 @@ const FigureArticle = () => {
 
       {isLoading && !figure ? (
         <div className="pt-32 pb-24 text-center max-w-4xl mx-auto px-6">
-          <p className="text-muted-foreground animate-pulse">Memuat artikel...</p>
+          <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase mb-4 animate-pulse">Memuat Artikel</p>
+          <h1 className="text-3xl font-bold text-foreground mb-4">Mohon tunggu sebentar</h1>
+          <p className="text-muted-foreground">Kami sedang mengambil kisah terbaru dari arsip Mekarhub.</p>
         </div>
       ) : !figure ? (
         <div className="pt-32 pb-24 text-center max-w-4xl mx-auto px-6">
-          <h1 className="text-3xl font-bold text-foreground mb-4">Artikel tidak ditemukan</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-4">
+            {fetchError ? "Artikel belum dapat dimuat" : "Artikel tidak ditemukan"}
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            {fetchError
+              ? "Arsip terbaru sedang tidak dapat diakses. Silakan coba beberapa saat lagi atau kembali ke daftar kisah."
+              : "Kisah yang Anda cari belum tersedia di arsip Mekarhub."}
+          </p>
           <Link to="/#archive" className="text-primary font-semibold hover:underline">
             ← Kembali ke Kisah Mereka
           </Link>
         </div>
       ) : (
         <>
+      {fetchError && (
+        <div className="pt-24 px-6 bg-background">
+          <div className="max-w-3xl mx-auto rounded-lg border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-muted-foreground">
+            {fetchError} Menampilkan versi tersimpan dari kisah ini.
+          </div>
+        </div>
+      )}
 
       {/* Hero Image — full photo with Parallax */}
-      <section className="relative pt-20 overflow-hidden">
+      <section className={`relative ${fetchError ? "pt-8" : "pt-20"} overflow-hidden`}>
         <div className="relative w-full min-h-[50vh] md:min-h-[70vh] lg:min-h-[80vh] bg-[#1a1a1a] flex items-center justify-center">
           <div 
             className="absolute inset-0 z-0 transition-transform duration-100 ease-out"
