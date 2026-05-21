@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import { escapeHtml } from './_sanitize.js';
 
 export default async function handler(req, res) {
   const { slug } = req.query;
@@ -52,40 +51,34 @@ export default async function handler(req, res) {
     }
 
     // 4. Generate Static HTML for Bots
-    const safeTitle = escapeHtml(`${figure.name || 'Mekarhub'} - Mekarhub`);
-    const safeDescription = escapeHtml(figure.story ? figure.story.substring(0, 160) : '');
-    const safeImageUrl = escapeHtml(imageUrl);
-    const safeSlug = encodeURIComponent(cleanSlug);
-    const safeBodyTitle = escapeHtml(figure.name || 'Mekarhub');
-    const safeBodyStory = escapeHtml(figure.story || '');
     const html = `
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>${safeTitle}</title>
-    <meta name="description" content="${safeDescription}">
+    <title>${figure.name} - Mekarhub</title>
+    <meta name="description" content="${figure.story ? figure.story.substring(0, 160) : ''}">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
-    <meta property="og:title" content="${safeTitle}">
-    <meta property="og:description" content="${safeDescription}">
-    <meta property="og:image" content="${safeImageUrl}">
-    <meta property="og:url" content="${SITE_BASE_URL}/kisah/${safeSlug}">
+    <meta property="og:title" content="${figure.name} - Mekarhub">
+    <meta property="og:description" content="${figure.story ? figure.story.substring(0, 160) : ''}">
+    <meta property="og:image" content="${imageUrl}">
+    <meta property="og:url" content="${SITE_BASE_URL}/kisah/${cleanSlug}">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${safeTitle}">
-    <meta name="twitter:description" content="${safeDescription}">
-    <meta name="twitter:image" content="${safeImageUrl}">
+    <meta name="twitter:title" content="${figure.name} - Mekarhub">
+    <meta name="twitter:description" content="${figure.story ? figure.story.substring(0, 160) : ''}">
+    <meta name="twitter:image" content="${imageUrl}">
     
     <!-- Redirect for real users just in case -->
-    <meta http-equiv="refresh" content="0;url=/kisah/${safeSlug}">
+    <meta http-equiv="refresh" content="0;url=/kisah/${cleanSlug}">
 </head>
 <body>
-    <h1>${safeBodyTitle}</h1>
-    <p>${safeBodyStory}</p>
-    <img src="${safeImageUrl}" alt="${safeBodyTitle}">
+    <h1>${figure.name}</h1>
+    <p>${figure.story}</p>
+    <img src="${imageUrl}" alt="${figure.name}">
 </body>
 </html>
     `;

@@ -1,4 +1,4 @@
-import { useState, useEffect, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,9 @@ import {
 import logoRed from "@/assets/Logo_Mekar_Hub_1.png";
 
 // ─── Konstanta ──────────────────────────────────────────────────────────────
+const ADMIN_PIN = "mekarhub2026";
+const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
+
 // ─── Tipe Data ───────────────────────────────────────────────────────────────
 interface KlienData {
   idBaris: number;
@@ -100,100 +103,6 @@ interface FigurData {
   idRelasiKlien: string;
 }
 
-type ActiveMenu = "beranda" | "klien" | "figur";
-type RefreshHandler = () => void | Promise<void>;
-type TextInputType = "text" | "date";
-
-interface SidebarItemProps {
-  icon: ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
-
-interface BerandaViewProps {
-  klien: number;
-  figur: number;
-  selesai: number;
-  onNavigate: Dispatch<SetStateAction<ActiveMenu>>;
-}
-
-interface StatCardProps {
-  icon: ReactNode;
-  label: string;
-  value: number;
-  color: string;
-  onClick?: () => void;
-}
-
-interface KlienViewProps {
-  data: KlienData[];
-  onEdit: (klien: KlienData) => void;
-  onPromote: (klien: KlienData) => void;
-  onPreview: (url: string) => void;
-  onDelete: (idBaris: number) => void;
-  onWA: (whatsapp: string, name: string) => void;
-}
-
-interface FigurViewProps {
-  data: FigurData[];
-  onEdit: (figur: FigurData) => void;
-  onAdd: () => void;
-  onPreview: (figur: FigurData) => void;
-  onDelete: (idBaris: number) => void;
-}
-
-interface ActionBtnProps {
-  onClick: () => void;
-  icon: ReactNode;
-  color: string;
-  disabled?: boolean;
-}
-
-interface EditKlienModalProps {
-  klien: KlienData;
-  onClose: () => void;
-  onSave: RefreshHandler;
-}
-
-interface EditFigurModalProps {
-  figur: FigurData;
-  onClose: () => void;
-  onSave: RefreshHandler;
-}
-
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: TextInputType;
-}
-
-const adminGasGet = async (action: string) => {
-  const response = await fetch(`/api/admin/gas?action=${encodeURIComponent(action)}`, {
-    credentials: "include",
-  });
-  const data = await response.json();
-  if (!response.ok || data?.ok === false) {
-    throw new Error(data?.message || "Admin request failed");
-  }
-  return data;
-};
-
-const adminGasPost = async (payload: Record<string, string | number>) => {
-  const response = await fetch("/api/admin/gas", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json();
-  if (!response.ok || data?.ok === false) {
-    throw new Error(data?.message || "Admin request failed");
-  }
-  return data;
-};
-
 const emptyFigur = (): FigurData => ({
   idBaris: 0,
   nama: "",
@@ -224,32 +133,14 @@ const slugify = (text: string) => {
 // ─── Sub-komponen: Layar Login ────────────────────────────────────────────────
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pin, setPin] = useState("");
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) {
-        throw new Error(data?.message || "PIN salah");
-      }
+    if (pin === ADMIN_PIN) {
       onLogin();
-    } catch (error) {
-      toast({
-        title: "PIN Salah",
-        description: error instanceof Error ? error.message : "Gagal masuk dashboard",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({ title: "PIN Salah", variant: "destructive" });
     }
   };
 
@@ -267,9 +158,8 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
             onChange={(e) => setPin(e.target.value)}
             className="text-center tracking-[0.5em] text-xl py-7 rounded-2xl border-gray-100 bg-gray-50 focus:bg-white transition-all shadow-inner"
           />
-          <button disabled={loading} className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-70">
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Memeriksa..." : "Masuk Dashboard"}
+          <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
+            Masuk Dashboard
           </button>
         </form>
       </div>
@@ -279,10 +169,9 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
 // ─── Komponen Utama ─────────────────────────────────────────────────────────
 const AdminDashboard = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("admin_auth") === "true");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<ActiveMenu>("beranda");
+  const [activeMenu, setActiveMenu] = useState<"beranda" | "klien" | "figur">("beranda");
   const [klienList, setKlienList] = useState<KlienData[]>([]);
   const [figurList, setFigurList] = useState<FigurData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -297,20 +186,7 @@ const AdminDashboard = () => {
   const [deletingItem, setDeletingItem] = useState<{ id: number, type: 'klien' | 'figur' } | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/session", { credentials: "include" })
-      .then((response) => response.json())
-      .then((data) => setIsLoggedIn(Boolean(data.authenticated)))
-      .catch(() => setIsLoggedIn(false))
-      .finally(() => setCheckingSession(false));
-  }, []);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchData();
-    } else {
-      setKlienList([]);
-      setFigurList([]);
-    }
+    if (isLoggedIn) fetchData();
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -338,6 +214,17 @@ const AdminDashboard = () => {
     navigate("/admin");
   };
 
+  // Efek untuk Deep Linking Klien
+  useEffect(() => {
+    if (clientSlug && klienList.length > 0 && isLoggedIn) {
+      const found = klienList.find(k => slugify(k.nama) === clientSlug);
+      if (found) {
+        setActiveMenu("klien");
+        setEditingKlien(found);
+      }
+    }
+  }, [clientSlug, klienList, isLoggedIn]);
+
   const handlePreview = (url: string) => {
     if (!url) return;
     window.open(url, "_blank");
@@ -346,26 +233,24 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [kData, fData] = await Promise.all([
-        adminGasGet("getKlien"),
-        adminGasGet("getFigur")
+      const [kRes, fRes] = await Promise.all([
+        fetch(`${GAS_ENDPOINT}?action=getKlien&t=${Date.now()}`),
+        fetch(`${GAS_ENDPOINT}?action=getFigur&t=${Date.now()}`)
       ]);
+      const kData = await kRes.json();
+      const fData = await fRes.json();
       if (!kData.data || !fData.data) throw new Error("Data tidak lengkap");
       setKlienList(kData.data || []);
       setFigurList(fData.data || []);
-    } catch (e: unknown) {
+    } catch (e: any) {
       console.error("Fetch Error:", e);
-      const message = e instanceof Error ? e.message : "Unknown error";
-      toast({ title: "Gagal Mengambil Data", description: message, variant: "destructive" });
-      if (message.toLowerCase().includes("unauthorized")) {
-        setIsLoggedIn(false);
-      }
+      toast({ title: "Gagal Mengambil Data", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleWA = (whatsapp: string, name: string) => {
+  const handleWA = (whatsapp: any, name: string) => {
     if (!whatsapp) return;
     let cleanNumber = String(whatsapp).replace(/[^0-9]/g, "");
     if (cleanNumber.startsWith("0")) cleanNumber = "62" + cleanNumber.substring(1);
@@ -378,7 +263,17 @@ const AdminDashboard = () => {
   const handleDeleteKlien = async (idBaris: number) => {
     setLoading(true);
     try {
-      await adminGasPost({ action: "deleteKlien", idBaris });
+      const params = new URLSearchParams();
+      params.append("action", "deleteKlien");
+      params.append("idBaris", idBaris.toString());
+      params.append("t", Date.now().toString());
+      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
+      
+      // Menggunakan fetch biasa tanpa no-cors agar redirect diikuti
+      await fetch(finalUrl, { method: "GET" }).catch(() => {
+        // Abaikan CORS error karena request tetap sampai ke server GAS
+      });
+      
       toast({ title: "Klien Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
@@ -392,7 +287,14 @@ const AdminDashboard = () => {
   const handleDeleteFigur = async (idBaris: number) => {
     setLoading(true);
     try {
-      await adminGasPost({ action: "deleteFigur", idBaris });
+      const params = new URLSearchParams();
+      params.append("action", "deleteFigur");
+      params.append("idBaris", idBaris.toString());
+      params.append("t", Date.now().toString());
+      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
+      
+      await fetch(finalUrl, { method: "GET" }).catch(() => {});
+      
       toast({ title: "Artikel Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
@@ -416,26 +318,19 @@ const AdminDashboard = () => {
     }));
   };
 
-  const handleSignOut = async () => {
-    await fetch("/api/admin/logout", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => undefined);
-    setIsLoggedIn(false);
-    setEditingKlien(null);
-    setEditingFigur(null);
-    navigate("/admin");
-  };
-
-  if (checkingSession) return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-    </div>
-  );
-
   if (!isLoggedIn) return (
-    <LoginScreen onLogin={() => setIsLoggedIn(true)} />
+    <LoginScreen 
+      onLogin={() => {
+        localStorage.setItem("admin_auth", "true");
+        setIsLoggedIn(true);
+      }} 
+    />
   );
+
+  const handleSignOut = () => {
+    localStorage.removeItem("admin_auth");
+    setIsLoggedIn(false);
+  };
 
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-[#2D3436]">
@@ -510,7 +405,7 @@ const AdminDashboard = () => {
           {activeMenu === "klien" && (
             <KlienView 
               data={klienList.filter(k => String(k.nama || "").toLowerCase().includes(search.toLowerCase()))} 
-              onEdit={handleEditKlien} onPromote={handlePromote} onPreview={handlePreview} onDelete={(id: number) => setDeletingItem({ id, type: 'klien' })} onWA={handleWA}
+              onEdit={handleEditKlien} onPromote={handlePromote} onPreview={handlePreview} onDelete={(id: number) => setDeletingItem({ id, type: 'klien' })} onWA={(num: any, name: string) => handleWA(num, name)} 
             />
           )}
           {activeMenu === "figur" && (
@@ -581,13 +476,13 @@ const AdminDashboard = () => {
 
 // ─── Sub-komponen View ──────────────────────────────────────────────────────
 
-const SidebarItem = ({ icon, label, active, onClick }: SidebarItemProps) => (
+const SidebarItem = ({ icon, label, active, onClick }: any) => (
   <button onClick={onClick} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all ${active ? "bg-primary text-white shadow-xl shadow-primary/20" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
     {icon} <span className="font-bold text-sm tracking-tight">{label}</span>
   </button>
 );
 
-const BerandaView = ({ klien, figur, selesai, onNavigate }: BerandaViewProps) => (
+const BerandaView = ({ klien, figur, selesai, onNavigate }: any) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
     <StatCard icon={<Users size={28} />} label="Total Klien" value={klien} color="text-blue-600 bg-blue-50" onClick={() => onNavigate("klien")} />
     <StatCard icon={<Star size={28} />} label="Artikel Figur" value={figur} color="text-amber-600 bg-amber-50" onClick={() => onNavigate("figur")} />
@@ -602,7 +497,7 @@ const BerandaView = ({ klien, figur, selesai, onNavigate }: BerandaViewProps) =>
   </div>
 );
 
-const StatCard = ({ icon, label, value, color, onClick }: StatCardProps) => (
+const StatCard = ({ icon, label, value, color, onClick }: any) => (
   <div 
     onClick={onClick}
     className={`bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all ${onClick ? "cursor-pointer active:scale-95" : ""}`}
@@ -613,7 +508,7 @@ const StatCard = ({ icon, label, value, color, onClick }: StatCardProps) => (
   </div>
 );
 
-const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: KlienViewProps) => (
+const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) => (
   <div className="space-y-4">
     {/* DESKTOP TABLE */}
     <div className="hidden md:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
@@ -646,9 +541,9 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: Klien
                 </span>
               </td>
               <td className="px-8 py-6 text-right space-x-1">
-                <ActionBtn onClick={() => onWA(k.whatsapp, k.nama)} icon={<MessageSquare size={14} />} color="hover:text-green-500" disabled={!k.whatsapp} />
-                <ActionBtn onClick={() => onPreview(k.linkBrief)} icon={<ScrollText size={14} />} color="hover:text-blue-500" disabled={!k.linkBrief} />
-                <ActionBtn onClick={() => onPreview(k.linkMoU)} icon={<FileText size={14} />} color="hover:text-primary" disabled={!k.linkMoU} />
+                <ActionBtn onClick={() => onWA(k.whatsapp, k.nama)} icon={<MessageSquare size={14} />} color="hover:text-green-500" />
+                <ActionBtn onClick={() => onPreview(k.linkBrief)} icon={<ScrollText size={14} />} color="hover:text-blue-500" />
+                <ActionBtn onClick={() => onPreview(k.linkMoU)} icon={<FileText size={14} />} color="hover:text-primary" />
                 <ActionBtn onClick={() => onEdit(k)} icon={<Edit size={14} />} color="hover:text-blue-500" />
                 <ActionBtn onClick={() => onPromote(k)} icon={<Star size={14} />} color="hover:text-amber-500" />
                 <ActionBtn onClick={() => onDelete(k.idBaris)} icon={<Trash2 size={14} />} color="hover:text-red-500" />
@@ -691,7 +586,7 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: Klien
   </div>
 );
 
-const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: FigurViewProps) => (
+const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: any) => (
   <div className="space-y-6">
     <button onClick={onAdd} className="w-full md:w-auto flex items-center justify-center gap-2 bg-black text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-black/10 hover:bg-gray-800 transition-all active:scale-[0.98]">
       <Plus size={18} /> <span className="text-sm">Tambah Figur Baru</span>
@@ -753,23 +648,15 @@ const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: FigurViewProps)
   </div>
 );
 
-const ActionBtn = ({ onClick, icon, color, disabled }: ActionBtnProps) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`p-3 bg-white rounded-xl shadow-sm border transition-all ${
-      disabled
-        ? "opacity-25 cursor-not-allowed text-gray-200 border-gray-100"
-        : `text-gray-500 hover:bg-gray-50/50 border-gray-100 hover:border-gray-200 active:scale-95 ${color}`
-    }`}
-  >
+const ActionBtn = ({ onClick, icon, color }: any) => (
+  <button onClick={onClick} className={`p-3 text-gray-300 ${color} bg-white rounded-xl shadow-sm border border-transparent hover:border-gray-100 transition-all`}>
     {icon}
   </button>
 );
 
 // ─── Modals ────────────────────────────────────────────────────────────────
 
-const EditKlienModal = ({ klien, onClose, onSave }: EditKlienModalProps) => {
+const EditKlienModal = ({ klien, onClose, onSave }: any) => {
   const [activeTab, setActiveTab] = useState<'produksi' | 'biodata'>('produksi');
   const [form, setForm] = useState<AdminForm>(() => {
     const [start, end] = (klien.targetProduksi || "").split(" - ");
@@ -808,32 +695,36 @@ const EditKlienModal = ({ klien, onClose, onSave }: EditKlienModalProps) => {
     setLoading(true);
     try {
       const targetRange = `${form.targetProduksiStart} - ${form.targetProduksiEnd}`;
-
-      const payload: Record<string, string | number> = {
-        action: "updateKlien",
-        idBaris: klien.idBaris,
-      };
-
-      Object.entries(form).forEach(([key, value]) => {
+      
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("action", "updateKlien");
+      bodyParams.append("idBaris", klien.idBaris.toString());
+      
+      // Bungkus semua data form ke dalam URLSearchParams
+      Object.keys(form).forEach(key => {
         if (key !== "targetProduksiStart" && key !== "targetProduksiEnd") {
-          payload[key] = value || "";
+          bodyParams.append(key, String((form as any)[key] || ""));
         }
       });
-      payload.targetProduksi = targetRange;
+      bodyParams.append("targetProduksi", targetRange);
 
-      await adminGasPost(payload);
+      // Gunakan POST dengan body URLSearchParams (Paling Stabil untuk GAS)
+      await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        body: bodyParams
+      });
 
-      toast({ title: "Data & Dokumen Berhasil Diperbarui" });
-      await onSave();
-      onClose();
+      // Beri waktu 5 detik untuk server generate dokumen
+      setTimeout(() => {
+        setLoading(false);
+        toast({ title: "Data & Dokumen Berhasil Diperbarui" });
+        onSave(); 
+        onClose();
+      }, 5000);
     } catch (error) {
       console.error("Update Error:", error);
-      toast({
-        title: "Gagal Update",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
+      toast({ title: "Gagal Update", variant: "destructive" });
       setLoading(false);
     }
   };
@@ -968,7 +859,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: EditKlienModalProps) => {
   );
 };
 
-const EditFigurModal = ({ figur, onClose, onSave }: EditFigurModalProps) => {
+const EditFigurModal = ({ figur, onClose, onSave }: any) => {
   const [form, setForm] = useState<FigurData>(() => normalizeFigur(figur));
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -976,31 +867,35 @@ const EditFigurModal = ({ figur, onClose, onSave }: EditFigurModalProps) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await adminGasPost({
-        action: "updateFigur",
-        idBaris: form.idBaris || 0,
-        nama: form.nama || "",
-        judul: form.judul || "",
-        kategori: form.kategori || "",
-        slug: form.slug || "",
-        narasi: form.narasi || "",
-        image: form.image || "",
-        idRelasiKlien: form.idRelasiKlien || "",
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("action", "updateFigur");
+      bodyParams.append("idBaris", String(form.idBaris || 0));
+      bodyParams.append("nama", form.nama || "");
+      bodyParams.append("judul", form.judul || "");
+      bodyParams.append("kategori", form.kategori || "");
+      bodyParams.append("slug", form.slug || "");
+      bodyParams.append("narasi", form.narasi || "");
+      bodyParams.append("image", form.image || "");
+      bodyParams.append("idRelasiKlien", form.idRelasiKlien || "");
+
+      await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        body: bodyParams
       });
 
-      toast({ title: "Artikel Berhasil Disimpan" });
-      await onSave();
-      onClose();
+      setTimeout(() => {
+        setLoading(false);
+        toast({ title: "Artikel Berhasil Disimpan" });
+        onSave(); 
+        onClose();
+      }, 2000);
     } catch (error) {
       console.error("Save Error:", error);
-      toast({
-        title: "Gagal Simpan",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
+      toast({ title: "Gagal Simpan", variant: "destructive" });
       setLoading(false);
     }
+    finally { setLoading(false); }
   };
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6">
@@ -1030,14 +925,14 @@ const EditFigurModal = ({ figur, onClose, onSave }: EditFigurModalProps) => {
   );
 };
 
-const Inp = ({ label, value, onChange, type = "text" }: FieldProps) => (
+const Inp = ({ label, value, onChange, type = "text" }: any) => (
   <div className="space-y-2">
     <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pl-1">{label}</Label>
     <Input type={type} value={value} onChange={e => onChange(e.target.value)} className="rounded-xl border-gray-100 bg-gray-50/50 py-5 text-base md:text-sm h-auto focus:bg-white transition-all w-full" />
   </div>
 );
 
-const Txt = ({ label, value, onChange }: FieldProps) => (
+const Txt = ({ label, value, onChange }: any) => (
   <div className="space-y-2">
     <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pl-1">{label}</Label>
     <Textarea value={value} onChange={e => onChange(e.target.value)} className="rounded-xl border-gray-100 bg-gray-50/50 py-4 text-base md:text-sm focus:bg-white transition-all min-h-[100px] w-full" />

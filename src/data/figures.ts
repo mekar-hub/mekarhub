@@ -24,8 +24,6 @@ export interface Figure {
   harapan?: string;
 }
 
-type FigureRow = Partial<Record<keyof Figure, string>>;
-
 // Helper: sync conversion for Google Drive links
 export const convertDriveLink = (url: string): string => {
   if (!url) return "";
@@ -73,14 +71,14 @@ export const resolveImageUrl = async (url: string = ""): Promise<string> => {
 export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
   const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
   return new Promise((resolve, reject) => {
-    Papa.parse<FigureRow>(dynamicUrl, {
+    Papa.parse<any>(dynamicUrl, {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map((row) => ({
+          const rawFigures: Figure[] = results.data.map((row: any) => ({
             id: Number(row.id),
             name: row.name || "",
             title: row.title || "",
@@ -102,21 +100,21 @@ export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> =
           resolve(rawFigures);
         } catch (error) { reject(error); }
       },
-      error: (error) => reject(error),
+      error: (error: any) => reject(error),
     });
   });
 };
 
 export const fetchFiguresLocal = async (): Promise<Figure[]> => {
   return new Promise((resolve, reject) => {
-    Papa.parse<FigureRow>("/data_awal_mekarhub.csv", {
+    Papa.parse<any>("/data_awal_mekarhub.csv", {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map((row) => ({
+          const rawFigures: Figure[] = results.data.map((row: any) => ({
             id: Number(row.id),
             name: row.name || "",
             title: row.title || "",
@@ -138,7 +136,7 @@ export const fetchFiguresLocal = async (): Promise<Figure[]> => {
           resolve(rawFigures);
         } catch (error) { reject(error); }
       },
-      error: (error) => reject(error),
+      error: (error: any) => reject(error),
     });
   });
 };
