@@ -11,7 +11,6 @@ import {
   Search,
   Plus,
   Edit,
-  Eye,
   Star,
   LogOut,
   X,
@@ -119,6 +118,21 @@ const normalizeFigur = (figur: Partial<FigurData> | null | undefined): FigurData
   ...(figur || {}),
 });
 
+const FIGUR_CATEGORY_OPTIONS = [
+  "Inspirasi",
+  "UMKM",
+  "Pendidikan",
+  "Kreatif",
+  "Sosial",
+  "Komunitas",
+  "Pesantren",
+  "Keluarga",
+  "Kuliner",
+  "Lifestyle",
+  "Educator",
+  "Entrepreneur",
+];
+
 const normalizeDateForInput = (value: unknown): string => {
   if (!value) return "";
 
@@ -154,6 +168,12 @@ const slugify = (text: string) => {
     .replace(/\s+/g, '-')     // Ganti spasi dengan -
     .replace(/[^\w-]+/g, '')  // Hapus karakter non-word
     .replace(/--+/g, '-');    // Ganti multiple - dengan satu -
+};
+
+const openFigurArticle = (slug: string) => {
+  const cleanSlug = String(slug || "").trim();
+  if (!cleanSlug) return;
+  window.open(`/kisah/${cleanSlug}`, "_blank", "noopener,noreferrer");
 };
 
 // ─── Sub-komponen: Layar Login ────────────────────────────────────────────────
@@ -643,7 +663,14 @@ const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: any) => (
               <td className="px-8 py-6 text-xs text-gray-500 font-bold uppercase">{f.kategori}</td>
               <td className="px-8 py-6 font-mono text-[10px] text-gray-300">/{f.slug}</td>
               <td className="px-8 py-6 text-right space-x-1">
-                <ActionBtn onClick={() => onPreview(f)} icon={<Eye size={14} />} color="hover:text-primary" />
+                <button
+                  type="button"
+                  disabled={!String(f.slug || "").trim()}
+                  onClick={() => openFigurArticle(f.slug)}
+                  className="px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-100 text-[10px] font-bold uppercase tracking-widest text-gray-700 hover:bg-primary/5 hover:border-primary/20 hover:text-primary active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-100 disabled:hover:text-gray-700"
+                >
+                  Lihat
+                </button>
                 <ActionBtn onClick={() => onEdit(f)} icon={<Edit size={14} />} color="hover:text-blue-500" />
                 <ActionBtn onClick={() => onDelete(f.idBaris)} icon={<Trash2 size={14} />} color="hover:text-red-500" />
               </td>
@@ -667,7 +694,14 @@ const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: any) => (
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-             <button onClick={() => onPreview(f)} className="py-4 bg-gray-50 text-gray-800 rounded-2xl font-bold text-xs active:scale-95 transition-all">Lihat</button>
+             <button
+               type="button"
+               disabled={!String(f.slug || "").trim()}
+               onClick={() => openFigurArticle(f.slug)}
+               className="py-4 bg-gray-50 text-gray-800 rounded-2xl font-bold text-xs active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+             >
+               Lihat
+             </button>
              <button onClick={() => onEdit(f)} className="py-4 bg-primary text-white rounded-2xl font-bold text-xs active:scale-95 transition-all">Edit</button>
           </div>
         </div>
@@ -910,6 +944,7 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
   const [form, setForm] = useState<FigurData>(() => normalizeFigur(figur));
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const hasCustomCategory = Boolean(form.kategori && !FIGUR_CATEGORY_OPTIONS.includes(form.kategori));
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -954,7 +989,20 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth p-5 sm:p-6 md:p-12 space-y-6 md:space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <Inp label="Nama Figur" value={form.nama} onChange={v => setForm({...form, nama: v})} />
-            <Inp label="Kategori" value={form.kategori} onChange={v => setForm({...form, kategori: v})} />
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pl-1">Kategori</Label>
+              <select
+                value={form.kategori}
+                onChange={e => setForm({...form, kategori: e.target.value})}
+                className="w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-5 text-base md:text-sm h-auto focus:bg-white transition-all"
+              >
+                <option value="">Pilih kategori</option>
+                {hasCustomCategory && <option value={form.kategori}>{form.kategori}</option>}
+                {FIGUR_CATEGORY_OPTIONS.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <Inp label="Judul Cerita" value={form.judul} onChange={v => setForm({...form, judul: v})} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
