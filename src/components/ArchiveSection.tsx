@@ -85,13 +85,14 @@ const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
 
 const ArchiveSection = () => {
   const [activeFilter, setActiveFilter] = useState<string>("All Figures");
+  const [searchQuery, setSearchQuery] = useState("");
   // showAll false by default to limit initial display to 6 figures
   const [showAll, setShowAll] = useState(false);
   const [figures, setFigures] = useState<Figure[]>(defaultFigures);
   const [isLoading, setIsLoading] = useState(false);
 
   // Re-scan for reveal-on-scroll elements whenever figures or filter changes
-  useScrollReveal([figures, activeFilter, showAll]);
+  useScrollReveal([figures, activeFilter, searchQuery, showAll]);
 
   useEffect(() => {
     if (!SHEET_CSV_URL) return;
@@ -111,11 +112,32 @@ const ArchiveSection = () => {
       });
   }, []);
 
+  const normalizedSearch = searchQuery.toLowerCase().trim();
+  const matchesSearch = (figure: Figure) => {
+    if (!normalizedSearch) return true;
+    const searchableText = [
+      figure.name,
+      figure.title,
+      figure.category,
+      figure.story,
+      figure.slug,
+      figure.identitasSpirit,
+      figure.titikBalik,
+      figure.keunikanAutentik,
+      figure.filosofiPelayanan,
+      figure.dinamikaTerkini,
+      figure.sisiKemanusiaan,
+      figure.harapan,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    return searchableText.includes(normalizedSearch);
+  };
+
   // Case-insensitive filtering and sorting (Featured first)
   const filtered = (activeFilter === "All Figures"
     ? figures
     : figures.filter((f) => f.category.toLowerCase() === activeFilter.toLowerCase())
-  ).sort((a, b) => (a.featured === b.featured ? 0 : a.featured ? -1 : 1));
+  ).filter(matchesSearch).sort((a, b) => (a.featured === b.featured ? 0 : a.featured ? -1 : 1));
 
   // Logic: display 6 figures initially if showAll is false, otherwise show everything in the current filter.
   const displayFigures = showAll ? filtered : filtered.slice(0, 6);
@@ -130,20 +152,34 @@ const ArchiveSection = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-12 reveal-on-scroll">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => { setActiveFilter(cat); setShowAll(false); }}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                activeFilter === cat
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
-                  : "bg-card text-muted-foreground border hover:bg-accent hover:text-accent-foreground"
-              }`}
+        <div className="mb-12 reveal-on-scroll flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative w-full md:max-w-xl md:flex-1">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowAll(false); }}
+              placeholder="Cari kisah mereka..."
+              aria-label="Cari kisah mereka"
+              className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm text-foreground shadow-sm outline-none transition-all placeholder:text-muted-foreground/70 focus:border-primary/50 focus:ring-4 focus:ring-primary/10"
+            />
+          </div>
+          <div className="relative w-full md:w-64">
+            <select
+              value={activeFilter}
+              onChange={(e) => { setActiveFilter(e.target.value); setShowAll(false); }}
+              aria-label="Filter kategori kisah"
+              className="w-full appearance-none rounded-full border border-border bg-card px-5 py-3.5 pr-10 text-sm font-medium text-foreground shadow-sm outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/10"
             >
-              {cat}
-            </button>
-          ))}
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
         </div>
 
         {/* Grid */}
@@ -156,7 +192,9 @@ const ArchiveSection = () => {
             ))
           ) : (
             <div className="col-span-full py-20 text-center">
-              <p className="text-muted-foreground italic">Tidak ada kisah ditemukan untuk kategori ini.</p>
+              <p className="text-muted-foreground italic">
+                {normalizedSearch ? "Tidak ada kisah yang sesuai dengan pencarian." : "Tidak ada kisah ditemukan untuk kategori ini."}
+              </p>
             </div>
           )}
         </div>
