@@ -12,25 +12,61 @@ import { useToast } from "@/hooks/use-toast";
 import { Facebook, MessageCircle, Copy, Share2, Youtube, Image as ImageIcon } from "lucide-react";
 
 const YouTubeEmbed = ({ url }: { url: string }) => {
-  const getID = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  };
-  const videoId = getID(url);
-  if (!videoId) return null;
-
   return (
     <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl my-12 group">
       <iframe
-        src={`https://www.youtube.com/embed/${videoId}`}
+        src={url}
         className="absolute inset-0 w-full h-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
         title="YouTube video player"
       />
     </div>
   );
+};
+
+const getTrustedYouTubeEmbedUrl = (rawUrl: string) => {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.replace(/^www\./, "");
+    let videoId = "";
+
+    if (host === "youtu.be") {
+      videoId = parsed.pathname.split("/").filter(Boolean)[0] || "";
+    } else if (host === "youtube.com" || host === "m.youtube.com") {
+      if (parsed.pathname === "/watch") videoId = parsed.searchParams.get("v") || "";
+      if (parsed.pathname.startsWith("/embed/") || parsed.pathname.startsWith("/shorts/")) {
+        videoId = parsed.pathname.split("/").filter(Boolean)[1] || "";
+      }
+    }
+
+    return /^[a-zA-Z0-9_-]{11}$/.test(videoId) ? `https://www.youtube.com/embed/${videoId}` : null;
+  } catch {
+    return null;
+  }
+};
+
+const getTrustedImageUrl = (rawUrl: string) => {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const allowedHosts = new Set(["drive.google.com", "docs.google.com", "ibb.co", "i.ibb.co"]);
+    return allowedHosts.has(host) ? rawUrl : null;
+  } catch {
+    return null;
+  }
+};
+
+const parseTrustedStoryEmbed = (rawContent: string) => {
+  const cleanContent = rawContent.replace(/^(YT:|IMG:)/i, "").trim();
+  const youtubeUrl = getTrustedYouTubeEmbedUrl(cleanContent);
+  if (youtubeUrl) return { type: "youtube" as const, url: youtubeUrl };
+
+  const imageUrl = getTrustedImageUrl(cleanContent);
+  if (imageUrl) return { type: "image" as const, url: imageUrl };
+
+  return null;
 };
 
 const StoryImage = ({ url, alt }: { url: string; alt: string }) => {
@@ -282,19 +318,12 @@ const FigureArticle = () => {
               if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
                 const content = trimmedLine.substring(1, trimmedLine.length - 1).trim();
                 
-                // Hapus prefix YT: atau IMG: jika ada (untuk fleksibilitas)
-                const cleanContent = content.replace(/^(YT:|IMG:)/i, '').trim();
-
-                // Deteksi Video YouTube
-                if (cleanContent.includes('youtube.com') || cleanContent.includes('youtu.be')) {
-                  return <YouTubeEmbed key={i} url={cleanContent} />;
+                const embed = parseTrustedStoryEmbed(content);
+                if (embed?.type === "youtube") {
+                  return <YouTubeEmbed key={i} url={embed.url} />;
                 }
-                
-                // Deteksi Gambar (Google Drive atau ImgBB)
-                if (cleanContent.includes('drive.google.com') || 
-                    cleanContent.includes('docs.google.com') || 
-                    cleanContent.includes('ibb.co')) {
-                  return <StoryImage key={i} url={cleanContent} alt={`Foto tambahan ${figure.name}`} />;
+                if (embed?.type === "image") {
+                  return <StoryImage key={i} url={embed.url} alt={`Foto tambahan ${figure.name}`} />;
                 }
               }
 

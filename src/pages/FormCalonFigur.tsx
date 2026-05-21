@@ -16,8 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CheckCircle2, MessageSquare, Send } from "lucide-react";
 
-const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
-
 const FormCalonFigur = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -46,6 +44,7 @@ const FormCalonFigur = () => {
     deskripsiUsaha: "",
     momenBerkesan: "",
     harapan: "",
+    website: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,43 +70,20 @@ const FormCalonFigur = () => {
     setLoading(true);
     setNotificationWarning(false);
     try {
-      const formData = new URLSearchParams();
-      formData.append("action", "register");
-      formData.append("formType", "register");
-      formData.append("nama", form.nama.trim());
-      formData.append("jabatan", form.jabatan.trim());
-      formData.append("whatsapp", form.whatsapp.trim());
-      formData.append("mediaSosial", form.mediaSosial.trim());
-      formData.append("lokasi", form.lokasi.trim());
-      formData.append("deskripsiUsaha", form.deskripsiUsaha.trim());
-      formData.append("momenBerkesan", form.momenBerkesan.trim());
-      formData.append("harapan", form.harapan.trim());
-      const encodedBody = formData.toString();
       const submittedNameValue = form.nama.trim();
 
-      // 1. Kirim ke Google Apps Script (Sheet)
-      await fetch(GAS_ENDPOINT, {
+      const response = await fetch("/api/register-story", {
         method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        },
-        body: encodedBody,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
 
-      // 2. Kirim Notifikasi Email ke Admin
-      try {
-        const notifyResponse = await fetch("/api/notify-admin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
+      if (!response.ok) {
+        throw new Error("Story submission failed");
+      }
 
-        if (!notifyResponse.ok) {
-          throw new Error("Notification request failed");
-        }
-      } catch (notifyError) {
-        console.error("Notification error:", notifyError);
+      const result = await response.json();
+      if (!result.notificationOk) {
         setNotificationWarning(true);
         toast({
           title: "Kisah Terkirim",
@@ -126,6 +102,7 @@ const FormCalonFigur = () => {
         deskripsiUsaha: "",
         momenBerkesan: "",
         harapan: "",
+        website: "",
       });
     } catch (err) {
       console.error("Submission error:", err);
@@ -176,6 +153,15 @@ const FormCalonFigur = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="bg-white p-8 md:p-16 rounded-[2.5rem] border border-gray-100 shadow-2xl shadow-gray-200/40 space-y-16">
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={(e) => setForm({ ...form, website: e.target.value })}
+              className="hidden"
+              aria-hidden="true"
+            />
             
             {/* ─── Seksi I: Identitas Diri ─── */}
             <div className="space-y-10">

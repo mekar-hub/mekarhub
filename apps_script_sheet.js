@@ -33,6 +33,11 @@ function handleRequest(e) {
     
     var safe = function(val) { return String(val || "").trim(); };
     var action = safe(params.action || params.formType);
+    var adminToken = PropertiesService.getScriptProperties().getProperty("ADMIN_TOKEN") || "";
+    var publicActions = { "": true, "register": true };
+    if (!publicActions[action] && adminToken && safe(params.adminToken) !== adminToken) {
+      return createJsonResponse({ error: "Unauthorized" });
+    }
     var ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
     var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
 
@@ -45,26 +50,29 @@ function handleRequest(e) {
       var baris = parseInt(params.idBaris);
       if (isNaN(baris)) throw new Error("ID Baris tidak valid");
       
-      if (params.nama) sheetKlien.getRange(baris, 2).setValue(safe(params.nama));
-      if (params.jabatan) sheetKlien.getRange(baris, 3).setValue(safe(params.jabatan));
-      if (params.whatsapp) sheetKlien.getRange(baris, 4).setValue(safe(params.whatsapp));
-      if (params.mediaSosial) sheetKlien.getRange(baris, 5).setValue(safe(params.mediaSosial));
-      if (params.lokasi) sheetKlien.getRange(baris, 6).setValue(safe(params.lokasi));
-      if (params.deskripsiUsaha) sheetKlien.getRange(baris, 7).setValue(safe(params.deskripsiUsaha));
-      if (params.momenBerkesan) sheetKlien.getRange(baris, 8).setValue(safe(params.momenBerkesan));
-      if (params.harapan) sheetKlien.getRange(baris, 13).setValue(safe(params.harapan));
-      if (params.ideBesar) sheetKlien.getRange(baris, 17).setValue(safe(params.ideBesar));
-      if (params.visualTone) sheetKlien.getRange(baris, 18).setValue(safe(params.visualTone));
-      if (params.hook) sheetKlien.getRange(baris, 19).setValue(safe(params.hook));
-      if (params.catatanTeknis) sheetKlien.getRange(baris, 20).setValue(safe(params.catatanTeknis));
-      if (params.nilaiKontrak) sheetKlien.getRange(baris, 23).setValue(safe(params.nilaiKontrak).replace(/[^0-9]/g, ''));
-      if (params.nomorRekening) sheetKlien.getRange(baris, 24).setValue(safe(params.nomorRekening));
-      if (params.targetProduksi) sheetKlien.getRange(baris, 25).setValue(safe(params.targetProduksi));
-      if (params.namaLead) sheetKlien.getRange(baris, 27).setValue(safe(params.namaLead));
-      if (params.namaVideografer) sheetKlien.getRange(baris, 28).setValue(safe(params.namaVideografer));
-      if (params.namaEditor) sheetKlien.getRange(baris, 29).setValue(safe(params.namaEditor));
-      if (params.jadwalVisit) sheetKlien.getRange(baris, 30).setValue(safe(params.jadwalVisit));
-      if (params.statusProduksi) sheetKlien.getRange(baris, 31).setValue(safe(params.statusProduksi));
+      if (params.nama !== undefined) sheetKlien.getRange(baris, 2).setValue(safe(params.nama));
+      if (params.jabatan !== undefined) sheetKlien.getRange(baris, 3).setValue(safe(params.jabatan));
+      if (params.whatsapp !== undefined) sheetKlien.getRange(baris, 4).setValue(safe(params.whatsapp));
+      if (params.mediaSosial !== undefined) sheetKlien.getRange(baris, 5).setValue(safe(params.mediaSosial));
+      if (params.lokasi !== undefined) sheetKlien.getRange(baris, 6).setValue(safe(params.lokasi));
+      if (params.deskripsiUsaha !== undefined) sheetKlien.getRange(baris, 7).setValue(safe(params.deskripsiUsaha));
+      if (params.momenBerkesan !== undefined) sheetKlien.getRange(baris, 8).setValue(safe(params.momenBerkesan));
+      if (params.harapan !== undefined) sheetKlien.getRange(baris, 13).setValue(safe(params.harapan));
+      if (params.kategori !== undefined) sheetKlien.getRange(baris, 14).setValue(safe(params.kategori));
+      if (params.ideBesar !== undefined) sheetKlien.getRange(baris, 17).setValue(safe(params.ideBesar));
+      if (params.visualTone !== undefined) sheetKlien.getRange(baris, 18).setValue(safe(params.visualTone));
+      if (params.hook !== undefined) sheetKlien.getRange(baris, 19).setValue(safe(params.hook));
+      if (params.catatanTeknis !== undefined) sheetKlien.getRange(baris, 20).setValue(safe(params.catatanTeknis));
+      if (params.nilaiKontrak !== undefined) sheetKlien.getRange(baris, 23).setValue(safe(params.nilaiKontrak).replace(/[^0-9]/g, ''));
+      if (params.nomorRekening !== undefined) sheetKlien.getRange(baris, 24).setValue(safe(params.nomorRekening));
+      if (params.targetProduksi !== undefined) sheetKlien.getRange(baris, 25).setValue(safe(params.targetProduksi));
+      if (params.namaLead !== undefined) sheetKlien.getRange(baris, 26).setValue(safe(params.namaLead));
+      if (params.namaVideografer !== undefined) sheetKlien.getRange(baris, 27).setValue(safe(params.namaVideografer));
+      if (params.namaEditor !== undefined) sheetKlien.getRange(baris, 28).setValue(safe(params.namaEditor));
+      if (params.jadwalVisit !== undefined) sheetKlien.getRange(baris, 29).setValue(safe(params.jadwalVisit));
+      if (params.statusProduksi !== undefined) sheetKlien.getRange(baris, 30).setValue(safe(params.statusProduksi));
+      if (params.statusPelunasan !== undefined) sheetKlien.getRange(baris, 31).setValue(safe(params.statusPelunasan));
+      if (params.linkHasilFinal !== undefined) sheetKlien.getRange(baris, 32).setValue(safe(params.linkHasilFinal));
 
       SpreadsheetApp.flush();
       var d = sheetKlien.getRange(baris, 1, 1, 32).getValues()[0];
@@ -72,8 +80,8 @@ function handleRequest(e) {
         idBaris: baris, nama: d[1], jabatan: d[2], whatsapp: d[3], medsos: d[4],
         lokasi: d[5], usaha: d[6], titikBalik: d[7], harapan: d[12],
         ideBesar: d[16], visualTone: d[17], hook: d[18], catatan: d[19],
-        rekening: d[23], target: d[24], lead: d[26], video: d[27], editor: d[28],
-        visit: d[29]
+        rekening: d[23], target: d[24], lead: d[25], video: d[26], editor: d[27],
+        visit: d[28]
       };
 
       var briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
@@ -100,8 +108,9 @@ function handleRequest(e) {
             linkBrief: dataK[i][15], ideBesar: dataK[i][16], visualTone: dataK[i][17], 
             hook: dataK[i][18], catatanTeknis: dataK[i][19], linkMoU: dataK[i][21],
             nilaiKontrak: dataK[i][22], nomorRekening: dataK[i][23], targetProduksi: dataK[i][24],
-            namaLead: dataK[i][26], namaVideografer: dataK[i][27],
-            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30]
+            namaLead: dataK[i][25], namaVideografer: dataK[i][26],
+            namaEditor: dataK[i][27], jadwalVisit: dataK[i][28], statusProduksi: dataK[i][29],
+            statusPelunasan: dataK[i][30], linkHasilFinal: dataK[i][31]
           });
         }
       }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -7,20 +7,22 @@ import { CheckCircle2, Send, AlertTriangle } from "lucide-react";
 const TestNotification = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/session")
+      .then((res) => res.json())
+      .then((data) => setIsAuthorized(Boolean(data.authenticated)))
+      .catch(() => setIsAuthorized(false))
+      .finally(() => setIsChecking(false));
+  }, []);
 
   const handleTestEmail = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/notify-admin", {
+      const response = await fetch("/api/admin/test-notification", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nama: "Tester Mekarhub",
-          noWa: "081234567890",
-          kategori: "Testing",
-          linkProfil: "https://mekarhub.id",
-          cerita: "Ini adalah pesan percobaan dari halaman Testing Notification.",
-        }),
       });
 
       if (response.ok) {
@@ -32,10 +34,10 @@ const TestNotification = () => {
         const data = await response.json();
         throw new Error(data.message || "Gagal mengirim email");
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Gagal Mengirim",
-        description: error.message || "Pastikan Anda menjalankan dengan 'vercel dev' untuk mengetes API lokal.",
+        description: error instanceof Error ? error.message : "Pastikan Anda menjalankan dengan 'vercel dev' untuk mengetes API lokal.",
         variant: "destructive",
       });
     } finally {
@@ -52,6 +54,15 @@ const TestNotification = () => {
             <Send className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold mb-4">Test Notification System</h1>
+          {isChecking ? (
+            <p className="text-muted-foreground mb-8">Memeriksa sesi admin...</p>
+          ) : !isAuthorized ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 text-left">
+              <p className="text-sm font-medium text-red-900">Akses terbatas admin.</p>
+              <p className="text-xs text-red-800 mt-1">Silakan login ke dashboard admin sebelum menguji notifikasi.</p>
+            </div>
+          ) : (
+            <>
           <p className="text-muted-foreground mb-8">
             Klik tombol di bawah untuk mengirim email percobaan ke <strong>mekarhub@gmail.com</strong>. 
             Ini akan menguji serverless function di <code>api/notify-admin.js</code>.
@@ -82,6 +93,8 @@ const TestNotification = () => {
               </>
             )}
           </button>
+            </>
+          )}
         </div>
       </section>
       <Footer />
