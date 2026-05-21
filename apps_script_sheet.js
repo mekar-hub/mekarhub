@@ -1,7 +1,24 @@
 /**
- * Google Apps Script - Mekarhub Integrated (v5.4 - Final Production)
- * Perbaikan: Mendukung sinkronisasi Jadwal Visit (Kolom AD/30) ke dokumen Master.
- * Placeholder Baru: [jadwal_visit] (format dd mm yyyy)
+ * Google Apps Script - Mekarhub Integrated (v5.6 - Unified Production)
+ *
+ * Fungsi:
+ * - Register Klien dari form publik
+ * - CRUD Klien untuk Admin Dashboard
+ * - CRUD Figur/Artikel dengan mapping v5.5
+ * - Generate Brief & MoU
+ * - Sinkronisasi Jadwal Visit ke dokumen Master
+ * - Menyimpan dan membaca Status Pelunasan / Keuangan Klien
+ *
+ * Update v5.6:
+ * - Menggunakan mapping Figur/Artikel fixed:
+ *   slug = Kolom G
+ *   narasi = Kolom H
+ *   image = Kolom J
+ *   idRelasiKlien = Kolom K
+ * - Menambahkan statusPelunasan:
+ *   Kolom AF / 32 = Status Pelunasan / Keuangan
+ * - Placeholder dokumen:
+ *   [jadwal_visit] dengan format contoh: Senin, 25 Mei 2026
  */
 
 var SS_KLIEN_ID = "1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q";
@@ -65,6 +82,12 @@ function handleRequest(e) {
       if (params.namaEditor) sheetKlien.getRange(baris, 29).setValue(safe(params.namaEditor));
       if (params.jadwalVisit) sheetKlien.getRange(baris, 30).setValue(safe(params.jadwalVisit));
       if (params.statusProduksi) sheetKlien.getRange(baris, 31).setValue(safe(params.statusProduksi));
+      // Persist statusPelunasan (column 32). Accepts "Lunas" / "Belum" (normalize safely).
+      if (params.statusPelunasan !== undefined) {
+        var sp = safe(params.statusPelunasan).toString().trim();
+        var spNorm = (sp.toLowerCase() === 'lunas') ? 'Lunas' : 'Belum';
+        sheetKlien.getRange(baris, 32).setValue(spNorm);
+      }
 
       SpreadsheetApp.flush();
       var d = sheetKlien.getRange(baris, 1, 1, 32).getValues()[0];
@@ -101,25 +124,48 @@ function handleRequest(e) {
             hook: dataK[i][18], catatanTeknis: dataK[i][19], linkMoU: dataK[i][21],
             nilaiKontrak: dataK[i][22], nomorRekening: dataK[i][23], targetProduksi: dataK[i][24],
             namaLead: dataK[i][26], namaVideografer: dataK[i][27],
-            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30]
+            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30], statusPelunasan: dataK[i][31]
           });
         }
       }
       return createJsonResponse({ data: resK });
     }
 
+    // --- MANAJEMEN DATA FIGUR (FIXED MAPPING) ---
     var ssFigur = SpreadsheetApp.openById(SS_FIGUR_ID);
     var sheetFigur = ssFigur.getSheetByName("Sheet1") || ssFigur.getSheets()[0];
     if (action === "getFigur") {
       var dataF = sheetFigur.getDataRange().getValues();
       var resF = [];
-      for (var j = 1; j < dataF.length; j++) resF.push({ idBaris: j+1, nama: dataF[j][1], judul: dataF[j][2], kategori: dataF[j][3], slug: dataF[j][4], narasi: dataF[j][5], image: dataF[j][6], idRelasiKlien: dataF[j][7] });
+      for (var j = 1; j < dataF.length; j++) {
+        if (dataF[j][1]) {
+          resF.push({
+            idBaris: j + 1,
+            nama: dataF[j][1],
+            judul: dataF[j][2],
+            kategori: dataF[j][3],
+            slug: dataF[j][6],
+            narasi: dataF[j][7],
+            image: dataF[j][9],
+            idRelasiKlien: dataF[j][10]
+          });
+        }
+      }
       return createJsonResponse({ data: resF });
     }
     if (action === "updateFigur") {
       var bf = parseInt(params.idBaris);
-      var vf = [[safe(params.nama), safe(params.judul), safe(params.kategori), safe(params.slug), safe(params.narasi), safe(params.image), safe(params.idRelasiKlien)]];
-      if (bf > 0) sheetFigur.getRange(bf, 2, 1, 7).setValues(vf); else sheetFigur.appendRow(["", safe(params.nama), safe(params.judul), safe(params.kategori), safe(params.slug), safe(params.narasi), safe(params.image), safe(params.idRelasiKlien)]);
+      if (bf > 0) {
+        sheetFigur.getRange(bf, 2).setValue(safe(params.nama));
+        sheetFigur.getRange(bf, 3).setValue(safe(params.judul));
+        sheetFigur.getRange(bf, 4).setValue(safe(params.kategori));
+        sheetFigur.getRange(bf, 7).setValue(safe(params.slug));
+        sheetFigur.getRange(bf, 8).setValue(safe(params.narasi));
+        sheetFigur.getRange(bf, 10).setValue(safe(params.image));
+        sheetFigur.getRange(bf, 11).setValue(safe(params.idRelasiKlien));
+      } else {
+        sheetFigur.appendRow([sheetFigur.getLastRow(), safe(params.nama), safe(params.judul), safe(params.kategori), "", false, safe(params.slug), safe(params.narasi), new Date(), safe(params.image), safe(params.idRelasiKlien)]);
+      }
       return createJsonResponse({ result: "success" });
     }
     if (action === "deleteFigur") {
@@ -133,6 +179,16 @@ function handleRequest(e) {
 
 function createJsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function formatTanggalIndonesia(dateInput) {
+  var date = new Date(dateInput);
+  if (isNaN(date.getTime())) return String(dateInput || "-");
+
+  var hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  var bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  return hari[date.getDay()] + ", " + date.getDate() + " " + bulan[date.getMonth()] + " " + date.getFullYear();
 }
 
 function generateDocument(templateId, fileName, data) {
@@ -160,7 +216,7 @@ function generateDocument(templateId, fileName, data) {
       
       var visitDate = "-";
       if (data.visit) {
-        try { visitDate = Utilities.formatDate(new Date(data.visit), "GMT+7", "dd MM yyyy"); } 
+        try { visitDate = formatTanggalIndonesia(data.visit); }
         catch(e) { visitDate = data.visit; }
       }
       s.replaceText("\\[jadwal_visit\\]", visitDate);

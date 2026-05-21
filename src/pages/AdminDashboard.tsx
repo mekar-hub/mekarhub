@@ -540,13 +540,15 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
                   {k.statusPelunasan || "Belum"}
                 </span>
               </td>
-              <td className="px-8 py-6 text-right space-x-1">
-                <ActionBtn onClick={() => onWA(k.whatsapp, k.nama)} icon={<MessageSquare size={14} />} color="hover:text-green-500" />
-                <ActionBtn onClick={() => onPreview(k.linkBrief)} icon={<ScrollText size={14} />} color="hover:text-blue-500" />
-                <ActionBtn onClick={() => onPreview(k.linkMoU)} icon={<FileText size={14} />} color="hover:text-primary" />
-                <ActionBtn onClick={() => onEdit(k)} icon={<Edit size={14} />} color="hover:text-blue-500" />
-                <ActionBtn onClick={() => onPromote(k)} icon={<Star size={14} />} color="hover:text-amber-500" />
-                <ActionBtn onClick={() => onDelete(k.idBaris)} icon={<Trash2 size={14} />} color="hover:text-red-500" />
+              <td className="px-8 py-6">
+                <div className="flex justify-end gap-2">
+                  <ActionBtn variant="klien" ariaLabel="WhatsApp Klien" onClick={() => onWA(k.whatsapp, k.nama)} icon={<MessageSquare size={15} />} color="text-emerald-600" />
+                  <ActionBtn variant="klien" ariaLabel="Open Brief" onClick={() => onPreview(k.linkBrief)} icon={<ScrollText size={15} />} color="text-primary" />
+                  <ActionBtn variant="klien" ariaLabel="Open MoU" onClick={() => onPreview(k.linkMoU)} icon={<FileText size={15} />} color="text-primary" />
+                  <ActionBtn variant="klien" ariaLabel="Edit Data" onClick={() => onEdit(k)} icon={<Edit size={15} />} color="text-gray-700" />
+                  <ActionBtn variant="klien" ariaLabel="Promote to Figur" onClick={() => onPromote(k)} icon={<Star size={15} />} color="text-amber-500" />
+                  <ActionBtn variant="klien" ariaLabel="Hapus Klien" onClick={() => onDelete(k.idBaris)} icon={<Trash2 size={15} />} color="text-red-500" destructive />
+                </div>
               </td>
             </tr>
           ))}
@@ -648,16 +650,35 @@ const FigurView = ({ data, onEdit, onAdd, onPreview, onDelete }: any) => (
   </div>
 );
 
-const ActionBtn = ({ onClick, icon, color }: any) => (
-  <button onClick={onClick} className={`p-3 text-gray-300 ${color} bg-white rounded-xl shadow-sm border border-transparent hover:border-gray-100 transition-all`}>
-    {icon}
-  </button>
-);
+const ActionBtn = ({ onClick, icon, color, ariaLabel, variant, destructive }: any) => {
+  const disabled = false;
+  const isKlien = variant === "klien";
+  const isDestructive = !disabled && (destructive || String(color || '').includes('red'));
+  const base = isKlien
+    ? 'h-10 w-10 bg-white rounded-xl shadow-sm border transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/15'
+    : 'p-3 bg-white rounded-xl shadow-sm border transition-all flex items-center justify-center';
+  const klienClass = isDestructive
+    ? `border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 focus:ring-red-100 active:scale-95`
+    : `border-gray-100 ${color || 'text-gray-700'} hover:bg-primary/5 hover:border-primary/20 hover:text-primary active:scale-95`;
+  const enabledClass = isDestructive
+    ? `text-red-600 hover:bg-red-50 hover:border-red-100 active:scale-95 ${color}`
+    : `text-gray-700 hover:bg-gray-50/50 border-gray-100 hover:border-gray-200 active:scale-95 ${color}`;
+  const className = disabled
+    ? `${base} opacity-25 cursor-not-allowed text-gray-200 border-gray-100`
+    : `${base} ${isKlien ? klienClass : enabledClass}`;
+  const label = ariaLabel || "Action";
+
+  return (
+    <button onClick={onClick} className={className} title={label} aria-label={label}>
+      {icon}
+    </button>
+  );
+};
 
 // ─── Modals ────────────────────────────────────────────────────────────────
 
 const EditKlienModal = ({ klien, onClose, onSave }: any) => {
-  const [activeTab, setActiveTab] = useState<'produksi' | 'biodata'>('produksi');
+  const [activeTab, setActiveTab] = useState<'produksi' | 'biodata'>('biodata');
   const [form, setForm] = useState<AdminForm>(() => {
     const [start, end] = (klien.targetProduksi || "").split(" - ");
     return {
@@ -734,22 +755,22 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full max-w-5xl max-h-[90vh] md:max-h-full rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 md:zoom-in-95 md:duration-200">
-        <div className="p-6 md:p-8 border-b flex justify-between items-center bg-[#FDFDFD]">
-          <div className="flex items-center gap-4">
+      <div className="bg-white w-full max-w-5xl max-h-[92dvh] md:max-h-full rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 md:zoom-in-95 md:duration-200">
+        <div className="p-6 md:p-8 border-b flex justify-between items-start gap-4 bg-[#FDFDFD]">
+          <div className="flex items-start gap-4 min-w-0">
             <div className="hidden md:flex w-12 h-12 bg-primary/10 rounded-2xl items-center justify-center text-primary"><Briefcase size={24} /></div>
-            <div className="space-y-1">
+            <div className="space-y-3 min-w-0">
               <h3 className="text-xl font-serif font-bold">Editor Data Klien</h3>
-              <div className="flex p-1 bg-gray-100 rounded-xl w-fit">
-                <button onClick={() => setActiveTab('produksi')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'produksi' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Produksi & Keuangan</button>
-                <button onClick={() => setActiveTab('biodata')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'biodata' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Biodata Lengkap</button>
+              <div className="flex flex-wrap p-1 bg-gray-100 rounded-xl w-fit gap-1">
+                <button type="button" onClick={() => setActiveTab('biodata')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'biodata' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Biodata Lengkap</button>
+                <button type="button" onClick={() => setActiveTab('produksi')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'produksi' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Produksi & Keuangan</button>
               </div>
             </div>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"><X size={20} /></button>
         </div>
         
-        <form onSubmit={handleUpdate} className="flex-1 overflow-y-auto p-6 md:p-12">
+        <form onSubmit={handleUpdate} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth p-5 sm:p-6 md:p-12">
           {activeTab === 'produksi' ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
               <div className="space-y-8">
@@ -782,7 +803,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
                 <div className="space-y-6">
                   <Txt label="Ide Besar" value={form.ideBesar} onChange={(v: string) => setForm({...form, ideBesar: v})} />
                   <Txt label="Visual Tone" value={form.visualTone} onChange={(v: string) => setForm({...form, visualTone: v})} />
-                  <Inp label="Hook" value={form.hook} onChange={(v: string) => setForm({...form, hook: v})} />
+                  <Txt label="Hook" value={form.hook} onChange={(v: string) => setForm({...form, hook: v})} />
                   <Txt label="Catatan Teknis" value={form.catatanTeknis} onChange={(v: string) => setForm({...form, catatanTeknis: v})} />
                 </div>
               </div>
@@ -899,12 +920,12 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
   };
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] md:max-h-full rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl">
+      <div className="bg-white w-full max-w-4xl max-h-[92dvh] md:max-h-full rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl">
         <div className="p-6 md:p-8 border-b bg-[#FDFDFD] flex justify-between items-center">
           <h3 className="text-xl font-serif font-bold">Artikel Editor</h3>
           <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl transition-all"><X size={20} /></button>
         </div>
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 md:p-12 space-y-6 md:space-y-8">
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth p-5 sm:p-6 md:p-12 space-y-6 md:space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <Inp label="Nama Figur" value={form.nama} onChange={v => setForm({...form, nama: v})} />
             <Inp label="Kategori" value={form.kategori} onChange={v => setForm({...form, kategori: v})} />
@@ -935,7 +956,7 @@ const Inp = ({ label, value, onChange, type = "text" }: any) => (
 const Txt = ({ label, value, onChange }: any) => (
   <div className="space-y-2">
     <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pl-1">{label}</Label>
-    <Textarea value={value} onChange={e => onChange(e.target.value)} className="rounded-xl border-gray-100 bg-gray-50/50 py-4 text-base md:text-sm focus:bg-white transition-all min-h-[100px] w-full" />
+    <Textarea value={value} onChange={e => onChange(e.target.value)} className="rounded-xl border-gray-100 bg-gray-50/50 py-4 text-base md:text-sm leading-relaxed focus:bg-white transition-all min-h-[160px] md:min-h-[120px] w-full max-w-full resize-y overflow-y-auto whitespace-pre-wrap break-words" />
   </div>
 );
 
