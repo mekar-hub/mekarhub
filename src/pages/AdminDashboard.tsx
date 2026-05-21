@@ -119,6 +119,32 @@ const normalizeFigur = (figur: Partial<FigurData> | null | undefined): FigurData
   ...(figur || {}),
 });
 
+const normalizeDateForInput = (value: unknown): string => {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return "";
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+
+  const slashOrDashMatch = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (slashOrDashMatch) {
+    const day = slashOrDashMatch[1].padStart(2, "0");
+    const month = slashOrDashMatch[2].padStart(2, "0");
+    return `${slashOrDashMatch[3]}-${month}-${day}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
 const slugify = (text: string) => {
   return text
@@ -703,7 +729,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       statusPelunasan: klien.statusPelunasan || "Belum",
       targetProduksiStart: start || "",
       targetProduksiEnd: end || "",
-      jadwalVisit: klien.jadwalVisit || "",
+      jadwalVisit: normalizeDateForInput(klien.jadwalVisit),
       statusProduksi: klien.statusProduksi || "Proses",
       linkHasilFinal: klien.linkHasilFinal || "",
     };

@@ -77,17 +77,18 @@ function handleRequest(e) {
       if (params.nilaiKontrak) sheetKlien.getRange(baris, 23).setValue(safe(params.nilaiKontrak).replace(/[^0-9]/g, ''));
       if (params.nomorRekening) sheetKlien.getRange(baris, 24).setValue(safe(params.nomorRekening));
       if (params.targetProduksi) sheetKlien.getRange(baris, 25).setValue(safe(params.targetProduksi));
+      // Persist statusPelunasan (column 26). Accepts "Lunas" / "Belum" (normalize safely).
+      if (params.statusPelunasan !== undefined) {
+        var sp = safe(params.statusPelunasan).toString().trim();
+        var spNorm = (sp.toLowerCase() === 'lunas') ? 'Lunas' : 'Belum';
+        sheetKlien.getRange(baris, 26).setValue(spNorm);
+      }
       if (params.namaLead) sheetKlien.getRange(baris, 27).setValue(safe(params.namaLead));
       if (params.namaVideografer) sheetKlien.getRange(baris, 28).setValue(safe(params.namaVideografer));
       if (params.namaEditor) sheetKlien.getRange(baris, 29).setValue(safe(params.namaEditor));
       if (params.jadwalVisit) sheetKlien.getRange(baris, 30).setValue(safe(params.jadwalVisit));
       if (params.statusProduksi) sheetKlien.getRange(baris, 31).setValue(safe(params.statusProduksi));
-      // Persist statusPelunasan (column 32). Accepts "Lunas" / "Belum" (normalize safely).
-      if (params.statusPelunasan !== undefined) {
-        var sp = safe(params.statusPelunasan).toString().trim();
-        var spNorm = (sp.toLowerCase() === 'lunas') ? 'Lunas' : 'Belum';
-        sheetKlien.getRange(baris, 32).setValue(spNorm);
-      }
+      if (params.linkHasilFinal !== undefined) sheetKlien.getRange(baris, 32).setValue(safe(params.linkHasilFinal));
 
       SpreadsheetApp.flush();
       var d = sheetKlien.getRange(baris, 1, 1, 32).getValues()[0];
@@ -123,8 +124,9 @@ function handleRequest(e) {
             linkBrief: dataK[i][15], ideBesar: dataK[i][16], visualTone: dataK[i][17], 
             hook: dataK[i][18], catatanTeknis: dataK[i][19], linkMoU: dataK[i][21],
             nilaiKontrak: dataK[i][22], nomorRekening: dataK[i][23], targetProduksi: dataK[i][24],
+            statusPelunasan: dataK[i][25],
             namaLead: dataK[i][26], namaVideografer: dataK[i][27],
-            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30], statusPelunasan: dataK[i][31]
+            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30], linkHasilFinal: dataK[i][31]
           });
         }
       }
