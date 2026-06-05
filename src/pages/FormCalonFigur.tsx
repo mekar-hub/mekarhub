@@ -68,6 +68,17 @@ const FormCalonFigur = () => {
       return;
     }
 
+    // Validasi format nomor WhatsApp: hanya angka, panjang 8-15 digit
+    const cleanWA = form.whatsapp.trim().replace(/[^0-9]/g, "");
+    if (cleanWA.length < 8 || cleanWA.length > 15) {
+      toast({
+        title: "Nomor WhatsApp Tidak Valid",
+        description: "Nomor WhatsApp harus berupa angka dengan panjang 8-15 digit. Contoh: 081234567890",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     setNotificationWarning(false);
     try {
@@ -85,14 +96,28 @@ const FormCalonFigur = () => {
       const encodedBody = formData.toString();
       const submittedNameValue = form.nama.trim();
 
-      // 1. Kirim ke Google Apps Script (Sheet)
-      await fetch(GAS_ENDPOINT, {
+      // 1. Kirim ke Google Apps Script (Sheet) - CORS Mode
+      const response = await fetch(GAS_ENDPOINT, {
         method: "POST",
-        mode: "no-cors",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         body: encodedBody,
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal terhubung dengan peladen.");
+      }
+
+      const result = await response.json();
+      if (result.error) {
+        throw new Error(result.message || result.error);
+      }
+
+      // Tampilkan notifikasi berhasil
+      toast({
+        title: "Kisah Terkirim!",
+        description: "Data kisah Anda berhasil disimpan dengan sukses.",
       });
 
       // 2. Kirim Notifikasi Email ke Admin
@@ -109,10 +134,6 @@ const FormCalonFigur = () => {
       } catch (notifyError) {
         console.error("Notification error:", notifyError);
         setNotificationWarning(true);
-        toast({
-          title: "Kisah Terkirim",
-          description: "Data kisah berhasil dikirim, tetapi notifikasi admin mungkin belum terkirim otomatis.",
-        });
       }
 
       setSubmittedName(submittedNameValue);
@@ -127,11 +148,11 @@ const FormCalonFigur = () => {
         momenBerkesan: "",
         harapan: "",
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Submission error:", err);
       toast({
         title: "Gagal Mengirim",
-        description: "Kisah belum berhasil dikirim. Data Anda tetap tersimpan di form, silakan coba beberapa saat lagi.",
+        description: err instanceof Error ? err.message : "Kisah belum berhasil dikirim. Data Anda tetap tersimpan di form, silakan coba beberapa saat lagi.",
         variant: "destructive",
       });
     } finally {

@@ -315,16 +315,22 @@ const AdminDashboard = () => {
       params.append("t", Date.now().toString());
       const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
       
-      // Menggunakan fetch biasa tanpa no-cors agar redirect diikuti
-      await fetch(finalUrl, { method: "GET" }).catch(() => {
-        // Abaikan CORS error karena request tetap sampai ke server GAS
-      });
+      const response = await fetch(finalUrl, { method: "GET" });
+      if (!response.ok) {
+        throw new Error("Gagal terhubung dengan peladen.");
+      }
       
-      toast({ title: "Klien Berhasil Dihapus" });
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.message || resData.error);
+      }
+      
+      toast({ title: "Berhasil", description: "Klien Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
-    } catch (e) {
-      toast({ title: "Gagal Hapus", variant: "destructive" });
+    } catch (e: any) {
+      console.error("Delete client error:", e);
+      toast({ title: "Gagal Hapus", description: e.message || "Gagal menghapus klien.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -339,13 +345,22 @@ const AdminDashboard = () => {
       params.append("t", Date.now().toString());
       const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
       
-      await fetch(finalUrl, { method: "GET" }).catch(() => {});
+      const response = await fetch(finalUrl, { method: "GET" });
+      if (!response.ok) {
+        throw new Error("Gagal terhubung dengan peladen.");
+      }
       
-      toast({ title: "Artikel Berhasil Dihapus" });
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.message || resData.error);
+      }
+      
+      toast({ title: "Berhasil", description: "Artikel Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
-    } catch (e) {
-      toast({ title: "Gagal Hapus", variant: "destructive" });
+    } catch (e: any) {
+      console.error("Delete figure error:", e);
+      toast({ title: "Gagal Hapus", description: e.message || "Gagal menghapus artikel.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -774,6 +789,26 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Hentikan pengiriman formulir jika kolom wajib belum terisi
+    if (
+      !form.nama.trim() ||
+      !form.jabatan.trim() ||
+      !form.whatsapp.trim() ||
+      !form.lokasi.trim() ||
+      !form.deskripsiUsaha.trim() ||
+      !form.momenBerkesan.trim() ||
+      !form.harapan.trim()
+    ) {
+      toast({
+        title: "Mohon Lengkapi Data",
+        description: "Nama, Jabatan, WhatsApp, Lokasi, Deskripsi Usaha, Momen Berkesan, dan Harapan wajib diisi.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const targetRange = `${form.targetProduksiStart} - ${form.targetProduksiEnd}`;
       
@@ -789,23 +824,28 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       });
       bodyParams.append("targetProduksi", targetRange);
 
-      // Gunakan POST dengan body URLSearchParams (Paling Stabil untuk GAS)
-      await fetch(GAS_ENDPOINT, {
+      // Gunakan POST dengan mode CORS (Default) agar bisa membaca JSON
+      const response = await fetch(GAS_ENDPOINT, {
         method: "POST",
-        mode: "no-cors",
         body: bodyParams
       });
 
-      // Beri waktu 5 detik untuk server generate dokumen
-      setTimeout(() => {
-        setLoading(false);
-        toast({ title: "Data & Dokumen Berhasil Diperbarui" });
-        onSave(); 
-        onClose();
-      }, 5000);
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error("Gagal terhubung dengan peladen.");
+      }
+
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.message || resData.error);
+      }
+
+      setLoading(false);
+      toast({ title: "Berhasil", description: "Data & Dokumen Berhasil Diperbarui" });
+      onSave(); 
+      onClose();
+    } catch (error: any) {
       console.error("Update Error:", error);
-      toast({ title: "Gagal Update", variant: "destructive" });
+      toast({ title: "Gagal Update", description: error.message || "Terjadi kesalahan saat memperbarui data.", variant: "destructive" });
       setLoading(false);
     }
   };
@@ -948,6 +988,24 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Hentikan pengiriman formulir jika kolom wajib belum terisi
+    if (
+      !form.nama?.trim() ||
+      !form.judul?.trim() ||
+      !form.kategori?.trim() ||
+      !form.slug?.trim() ||
+      !form.narasi?.trim()
+    ) {
+      toast({
+        title: "Mohon Lengkapi Data",
+        description: "Nama, Kategori, Judul, Slug, dan Narasi wajib diisi.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const bodyParams = new URLSearchParams();
       bodyParams.append("action", "updateFigur");
@@ -960,24 +1018,30 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
       bodyParams.append("image", form.image || "");
       bodyParams.append("idRelasiKlien", form.idRelasiKlien || "");
 
-      await fetch(GAS_ENDPOINT, {
+      // Gunakan POST dengan mode CORS (Default) agar bisa membaca JSON
+      const response = await fetch(GAS_ENDPOINT, {
         method: "POST",
-        mode: "no-cors",
         body: bodyParams
       });
 
-      setTimeout(() => {
-        setLoading(false);
-        toast({ title: "Artikel Berhasil Disimpan" });
-        onSave(); 
-        onClose();
-      }, 2000);
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error("Gagal terhubung dengan peladen.");
+      }
+
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.message || resData.error);
+      }
+
+      setLoading(false);
+      toast({ title: "Berhasil", description: "Artikel Berhasil Disimpan" });
+      onSave(); 
+      onClose();
+    } catch (error: any) {
       console.error("Save Error:", error);
-      toast({ title: "Gagal Simpan", variant: "destructive" });
+      toast({ title: "Gagal Simpan", description: error.message || "Terjadi kesalahan saat menyimpan artikel.", variant: "destructive" });
       setLoading(false);
     }
-    finally { setLoading(false); }
   };
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6">

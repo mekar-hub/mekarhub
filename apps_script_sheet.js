@@ -1,24 +1,22 @@
 /**
- * Google Apps Script - Mekarhub Integrated (v5.6 - Unified Production)
+ * Google Apps Script - Mekarhub Integrated (v6.0 - Unified Production & Highly Optimized)
  *
  * Fungsi:
- * - Register Klien dari form publik
- * - CRUD Klien untuk Admin Dashboard
- * - CRUD Figur/Artikel dengan mapping v5.5
- * - Generate Brief & MoU
+ * - Register Klien dari form publik (dengan Lock & Validasi)
+ * - CRUD Klien untuk Admin Dashboard (dengan Lock, Validasi, Bulk Read/Write)
+ * - CRUD Figur/Artikel dengan mapping v5.5 (dengan Lock, Validasi, Bulk Read/Write)
+ * - Generate Brief & MoU (dioptimalkan tanpa redundant sheet read)
  * - Sinkronisasi Jadwal Visit ke dokumen Master
  * - Menyimpan dan membaca Status Pelunasan / Keuangan Klien
+ * - CacheService Terintegrasi untuk membaca Klien dan Figur secara instan
  *
- * Update v5.6:
- * - Menggunakan mapping Figur/Artikel fixed:
- *   slug = Kolom G
- *   narasi = Kolom H
- *   image = Kolom J
- *   idRelasiKlien = Kolom K
- * - Menambahkan statusPelunasan:
- *   Kolom AF / 32 = Status Pelunasan / Keuangan
- * - Placeholder dokumen:
- *   [jadwal_visit] dengan format contoh: Senin, 25 Mei 2026
+ * Optimasi:
+ * - Menggunakan LockService pada semua write/delete/update action.
+ * - Menggunakan CacheService (Script Cache) untuk getKlien dan getFigur.
+ * - Invalidate cache secara otomatis ketika ada write/delete/update action.
+ * - Menggunakan getValues dan setValues untuk operasi bulk read & write.
+ * - Validasi tipe data masukan secara ketat sebelum disimpan.
+ * - Error handling yang mengembalikan format balasan JSON dengan pesan kesalahan yang spesifik.
  */
 
 var SS_KLIEN_ID = "1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q";
@@ -30,7 +28,41 @@ var BRIEF_TEMPLATE_ID = "1GXSrTrczsJfn39McHk7aUoG5Bizx2vihzUJeRqpRuOQ";
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
+// --- UTILITY VALIDASI DATA ---
+function validateString(val, fieldName, maxLength, isRequired) {
+  var str = String(val || "").trim();
+  if (isRequired && !str) {
+    throw new Error("Field '" + fieldName + "' wajib diisi.");
+  }
+  if (maxLength && str.length > maxLength) {
+    str = str.substring(0, maxLength);
+  }
+  return str;
+}
+
+function validateWhatsApp(val, isRequired) {
+  var str = String(val || "").trim();
+  if (isRequired && !str) {
+    throw new Error("Nomor WhatsApp wajib diisi.");
+  }
+  if (!str) return "";
+  var clean = str.replace(/[^0-9]/g, "");
+  if (clean.length < 8 || clean.length > 15) {
+    throw new Error("Nomor WhatsApp harus berupa angka dengan panjang antara 8-15 digit.");
+  }
+  return clean;
+}
+
+function validateRowId(val, lastRow, fieldName) {
+  var num = parseInt(val, 10);
+  if (isNaN(num) || num <= 1 || num > lastRow) {
+    throw new Error("ID Baris '" + fieldName + "' tidak valid (" + val + "). Harus berupa baris yang valid di spreadsheet.");
+  }
+  return num;
+}
+
 function handleRequest(e) {
+  var cache = CacheService.getScriptCache();
   try {
     var params = e.parameter || {};
     if (e.postData && e.postData.contents) {
@@ -50,93 +82,65 @@ function handleRequest(e) {
     
     var safe = function(val) { return String(val || "").trim(); };
     var action = safe(params.action || params.formType);
+    
     var ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
     var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
-
-    if (!action || action === "register") {
-      sheetKlien.appendRow([new Date(), safe(params.nama), safe(params.jabatan), safe(params.whatsapp), safe(params.mediaSosial), safe(params.lokasi), safe(params.deskripsiUsaha), safe(params.momenBerkesan), "", "", "", "", safe(params.harapan), "Klien"]);
-      return createJsonResponse({ result: "success" });
-    }
-
-    if (action === "updateKlien") {
-      var baris = parseInt(params.idBaris);
-      if (isNaN(baris)) throw new Error("ID Baris tidak valid");
-      
-      if (params.nama) sheetKlien.getRange(baris, 2).setValue(safe(params.nama));
-      if (params.jabatan) sheetKlien.getRange(baris, 3).setValue(safe(params.jabatan));
-      if (params.whatsapp) sheetKlien.getRange(baris, 4).setValue(safe(params.whatsapp));
-      if (params.mediaSosial) sheetKlien.getRange(baris, 5).setValue(safe(params.mediaSosial));
-      if (params.lokasi) sheetKlien.getRange(baris, 6).setValue(safe(params.lokasi));
-      if (params.deskripsiUsaha) sheetKlien.getRange(baris, 7).setValue(safe(params.deskripsiUsaha));
-      if (params.momenBerkesan) sheetKlien.getRange(baris, 8).setValue(safe(params.momenBerkesan));
-      if (params.harapan) sheetKlien.getRange(baris, 13).setValue(safe(params.harapan));
-      if (params.ideBesar) sheetKlien.getRange(baris, 17).setValue(safe(params.ideBesar));
-      if (params.visualTone) sheetKlien.getRange(baris, 18).setValue(safe(params.visualTone));
-      if (params.hook) sheetKlien.getRange(baris, 19).setValue(safe(params.hook));
-      if (params.catatanTeknis) sheetKlien.getRange(baris, 20).setValue(safe(params.catatanTeknis));
-      if (params.nilaiKontrak) sheetKlien.getRange(baris, 23).setValue(safe(params.nilaiKontrak).replace(/[^0-9]/g, ''));
-      if (params.nomorRekening) sheetKlien.getRange(baris, 24).setValue(safe(params.nomorRekening));
-      if (params.targetProduksi) sheetKlien.getRange(baris, 25).setValue(safe(params.targetProduksi));
-      // Persist statusPelunasan (column 26). Accepts "Lunas" / "Belum" (normalize safely).
-      if (params.statusPelunasan !== undefined) {
-        var sp = safe(params.statusPelunasan).toString().trim();
-        var spNorm = (sp.toLowerCase() === 'lunas') ? 'Lunas' : 'Belum';
-        sheetKlien.getRange(baris, 26).setValue(spNorm);
-      }
-      if (params.namaLead) sheetKlien.getRange(baris, 27).setValue(safe(params.namaLead));
-      if (params.namaVideografer) sheetKlien.getRange(baris, 28).setValue(safe(params.namaVideografer));
-      if (params.namaEditor) sheetKlien.getRange(baris, 29).setValue(safe(params.namaEditor));
-      if (params.jadwalVisit) sheetKlien.getRange(baris, 30).setValue(safe(params.jadwalVisit));
-      if (params.statusProduksi) sheetKlien.getRange(baris, 31).setValue(safe(params.statusProduksi));
-      if (params.linkHasilFinal !== undefined) sheetKlien.getRange(baris, 32).setValue(safe(params.linkHasilFinal));
-
-      SpreadsheetApp.flush();
-      var d = sheetKlien.getRange(baris, 1, 1, 32).getValues()[0];
-      var dataObj = {
-        idBaris: baris, nama: d[1], jabatan: d[2], whatsapp: d[3], medsos: d[4],
-        lokasi: d[5], usaha: d[6], titikBalik: d[7], harapan: d[12],
-        ideBesar: d[16], visualTone: d[17], hook: d[18], catatan: d[19],
-        rekening: d[23], target: d[24], lead: d[26], video: d[27], editor: d[28],
-        visit: d[29]
-      };
-
-      var briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
-      var mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
-      if (briefUrl) sheetKlien.getRange(baris, 16).setValue(briefUrl);
-      if (mouUrl) sheetKlien.getRange(baris, 22).setValue(mouUrl);
-      return createJsonResponse({ result: "success", brief: briefUrl, mou: mouUrl });
-    }
-
-    if (action === "deleteKlien") {
-      var row = parseInt(params.idBaris);
-      if (row > 1) { sheetKlien.deleteRow(row); return createJsonResponse({ result: "success" }); }
-    }
-
+    
+    // --- READ OPERATIONS (TIDAK BUTUH LOCK) ---
+    
     if (action === "getKlien") {
+      var cachedKlien = cache.get("klien_data");
+      if (cachedKlien) {
+        return ContentService.createTextOutput(cachedKlien).setMimeType(ContentService.MimeType.JSON);
+      }
+      
       var dataK = sheetKlien.getDataRange().getValues();
       var resK = [];
       for (var i = 1; i < dataK.length; i++) {
         if (dataK[i][1]) {
           resK.push({
-            idBaris: i + 1, nama: dataK[i][1], jabatan: dataK[i][2], whatsapp: dataK[i][3],
-            mediaSosial: dataK[i][4], lokasi: dataK[i][5], deskripsiUsaha: dataK[i][6],
-            momenBerkesan: dataK[i][7], harapan: dataK[i][12], kategori: dataK[i][13],
-            linkBrief: dataK[i][15], ideBesar: dataK[i][16], visualTone: dataK[i][17], 
-            hook: dataK[i][18], catatanTeknis: dataK[i][19], linkMoU: dataK[i][21],
-            nilaiKontrak: dataK[i][22], nomorRekening: dataK[i][23], targetProduksi: dataK[i][24],
+            idBaris: i + 1,
+            nama: dataK[i][1],
+            jabatan: dataK[i][2],
+            whatsapp: dataK[i][3],
+            mediaSosial: dataK[i][4],
+            lokasi: dataK[i][5],
+            deskripsiUsaha: dataK[i][6],
+            momenBerkesan: dataK[i][7],
+            harapan: dataK[i][12],
+            kategori: dataK[i][13],
+            linkBrief: dataK[i][15],
+            ideBesar: dataK[i][16],
+            visualTone: dataK[i][17], 
+            hook: dataK[i][18],
+            catatanTeknis: dataK[i][19],
+            linkMoU: dataK[i][21],
+            nilaiKontrak: dataK[i][22],
+            nomorRekening: dataK[i][23],
+            targetProduksi: dataK[i][24],
             statusPelunasan: dataK[i][25],
-            namaLead: dataK[i][26], namaVideografer: dataK[i][27],
-            namaEditor: dataK[i][28], jadwalVisit: dataK[i][29], statusProduksi: dataK[i][30], linkHasilFinal: dataK[i][31]
+            namaLead: dataK[i][26],
+            namaVideografer: dataK[i][27],
+            namaEditor: dataK[i][28],
+            jadwalVisit: dataK[i][29],
+            statusProduksi: dataK[i][30],
+            linkHasilFinal: dataK[i][31]
           });
         }
       }
+      var resKString = JSON.stringify({ data: resK });
+      try { cache.put("klien_data", resKString, 600); } catch(cErr) {} // Max 10 minutes cache
       return createJsonResponse({ data: resK });
     }
 
-    // --- MANAJEMEN DATA FIGUR (FIXED MAPPING) ---
-    var ssFigur = SpreadsheetApp.openById(SS_FIGUR_ID);
-    var sheetFigur = ssFigur.getSheetByName("Sheet1") || ssFigur.getSheets()[0];
     if (action === "getFigur") {
+      var cachedFigur = cache.get("figur_data");
+      if (cachedFigur) {
+        return ContentService.createTextOutput(cachedFigur).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var ssFigur = SpreadsheetApp.openById(SS_FIGUR_ID);
+      var sheetFigur = ssFigur.getSheetByName("Sheet1") || ssFigur.getSheets()[0];
       var dataF = sheetFigur.getDataRange().getValues();
       var resF = [];
       for (var j = 1; j < dataF.length; j++) {
@@ -153,30 +157,209 @@ function handleRequest(e) {
           });
         }
       }
+      var resFString = JSON.stringify({ data: resF });
+      try { cache.put("figur_data", resFString, 600); } catch(cErr) {}
       return createJsonResponse({ data: resF });
     }
-    if (action === "updateFigur") {
-      var bf = parseInt(params.idBaris);
-      if (bf > 0) {
-        sheetFigur.getRange(bf, 2).setValue(safe(params.nama));
-        sheetFigur.getRange(bf, 3).setValue(safe(params.judul));
-        sheetFigur.getRange(bf, 4).setValue(safe(params.kategori));
-        sheetFigur.getRange(bf, 7).setValue(safe(params.slug));
-        sheetFigur.getRange(bf, 8).setValue(safe(params.narasi));
-        sheetFigur.getRange(bf, 10).setValue(safe(params.image));
-        sheetFigur.getRange(bf, 11).setValue(safe(params.idRelasiKlien));
-      } else {
-        sheetFigur.appendRow([sheetFigur.getLastRow(), safe(params.nama), safe(params.judul), safe(params.kategori), "", false, safe(params.slug), safe(params.narasi), new Date(), safe(params.image), safe(params.idRelasiKlien)]);
-      }
-      return createJsonResponse({ result: "success" });
-    }
-    if (action === "deleteFigur") {
-      var rowF = parseInt(params.idBaris);
-      if (rowF > 1) { sheetFigur.deleteRow(rowF); return createJsonResponse({ result: "success" }); }
+
+    // --- WRITE OPERATIONS (DILINDUNGI LOCK SERVICE UNTUK MENCEGAH EROR CONCURRENCY) ---
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(30000)) {
+      return createJsonResponse({ error: "Sistem sibuk. Permintaan transaksi Anda melebihi batas waktu tunggu kunci (timeout). Silakan coba lagi." });
     }
 
-    return createJsonResponse({ status: "Mekarhub Online" });
-  } catch (err) { return createJsonResponse({ error: err.toString() }); }
+    try {
+      if (!action || action === "register") {
+        // Validasi data form calon klien
+        var vNama = validateString(params.nama, "Nama", 100, true);
+        var vJabatan = validateString(params.jabatan, "Jabatan", 100, true);
+        var vWhatsapp = validateWhatsApp(params.whatsapp, true);
+        var vMedsos = validateString(params.mediaSosial, "Media Sosial", 150, false);
+        var vLokasi = validateString(params.lokasi, "Lokasi", 150, true);
+        var vDeskripsi = validateString(params.deskripsiUsaha, "Deskripsi Usaha", 3000, true);
+        var vMomen = validateString(params.momenBerkesan, "Momen Berkesan", 3000, true);
+        var vHarapan = validateString(params.harapan, "Harapan", 2000, true);
+
+        sheetKlien.appendRow([
+          new Date(),
+          vNama,
+          vJabatan,
+          vWhatsapp,
+          vMedsos,
+          vLokasi,
+          vDeskripsi,
+          vMomen,
+          "", "", "", "",
+          vHarapan,
+          "Klien"
+        ]);
+
+        // Invalidate cache
+        cache.remove("klien_data");
+        return createJsonResponse({ result: "success" });
+      }
+
+      if (action === "updateKlien") {
+        var rawBaris = validateString(params.idBaris, "idBaris", 10, true);
+        var baris = validateRowId(rawBaris, sheetKlien.getLastRow(), "Klien (Update)");
+        
+        var range = sheetKlien.getRange(baris, 1, 1, 32);
+        var values = range.getValues()[0];
+
+        // Validasi input parameter sebelum update massal
+        if (params.nama !== undefined) values[1] = validateString(params.nama, "Nama", 100, false);
+        if (params.jabatan !== undefined) values[2] = validateString(params.jabatan, "Jabatan", 100, false);
+        if (params.whatsapp !== undefined) values[3] = validateWhatsApp(params.whatsapp, false);
+        if (params.mediaSosial !== undefined) values[4] = validateString(params.mediaSosial, "Media Sosial", 150, false);
+        if (params.lokasi !== undefined) values[5] = validateString(params.lokasi, "Lokasi", 150, false);
+        if (params.deskripsiUsaha !== undefined) values[6] = validateString(params.deskripsiUsaha, "Deskripsi Usaha", 3000, false);
+        if (params.momenBerkesan !== undefined) values[7] = validateString(params.momenBerkesan, "Momen Berkesan", 3000, false);
+        if (params.harapan !== undefined) values[12] = validateString(params.harapan, "Harapan", 2000, false);
+        
+        if (params.ideBesar !== undefined) values[16] = validateString(params.ideBesar, "Ide Besar", 300, false);
+        if (params.visualTone !== undefined) values[17] = validateString(params.visualTone, "Visual Tone", 300, false);
+        if (params.hook !== undefined) values[18] = validateString(params.hook, "Hook", 300, false);
+        if (params.catatanTeknis !== undefined) values[19] = validateString(params.catatanTeknis, "Catatan Teknis", 2000, false);
+        
+        if (params.nilaiKontrak !== undefined) {
+          var cleanNilai = validateString(params.nilaiKontrak, "Nilai Kontrak", 20, false).replace(/[^0-9]/g, '');
+          values[22] = cleanNilai ? parseInt(cleanNilai, 10) : "";
+        }
+        if (params.nomorRekening !== undefined) values[23] = validateString(params.nomorRekening, "Nomor Rekening", 50, false);
+        if (params.targetProduksi !== undefined) values[24] = validateString(params.targetProduksi, "Target Produksi", 100, false);
+        
+        if (params.statusPelunasan !== undefined) {
+          var sp = validateString(params.statusPelunasan, "Status Pelunasan", 20, false).toLowerCase();
+          values[25] = (sp === 'lunas') ? 'Lunas' : 'Belum';
+        }
+        
+        if (params.namaLead !== undefined) values[26] = validateString(params.namaLead, "Nama Lead", 100, false);
+        if (params.namaVideografer !== undefined) values[27] = validateString(params.namaVideografer, "Nama Videografer", 100, false);
+        if (params.namaEditor !== undefined) values[28] = validateString(params.namaEditor, "Nama Editor", 100, false);
+        if (params.jadwalVisit !== undefined) values[29] = validateString(params.jadwalVisit, "Jadwal Visit", 100, false);
+        if (params.statusProduksi !== undefined) {
+          var prodVal = validateString(params.statusProduksi, "Status Produksi", 20, false);
+          // Standardisasi status
+          if (prodVal === "Selesai" || prodVal === "Tunda" || prodVal === "Proses") {
+            values[30] = prodVal;
+          } else {
+            values[30] = "Proses";
+          }
+        }
+        if (params.linkHasilFinal !== undefined) values[31] = validateString(params.linkHasilFinal, "Link Hasil Final", 500, false);
+
+        // Buat objek data dari memory array values untuk diserahkan ke generator dokumen
+        var dataObj = {
+          idBaris: baris, nama: values[1], jabatan: values[2], whatsapp: values[3], medsos: values[4],
+          lokasi: values[5], usaha: values[6], titikBalik: values[7], harapan: values[12],
+          ideBesar: values[16], visualTone: values[17], hook: values[18], catatan: values[19],
+          rekening: values[23], target: values[24], lead: values[26], video: values[27], editor: values[28],
+          visit: values[29]
+        };
+
+        // Otomatisasi generate Brief & MoU di Google Drive
+        var briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
+        var mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
+        
+        if (briefUrl) values[15] = briefUrl;
+        if (mouUrl) values[21] = mouUrl;
+
+        // Tulis semua update ke sheet klien secara sekaligus
+        range.setValues([values]);
+
+        // Invalidate cache
+        cache.remove("klien_data");
+        return createJsonResponse({ result: "success", brief: briefUrl, mou: mouUrl });
+      }
+
+      if (action === "deleteKlien") {
+        var rawBarisDel = validateString(params.idBaris, "idBaris", 10, true);
+        var row = validateRowId(rawBarisDel, sheetKlien.getLastRow(), "Klien (Delete)");
+        
+        sheetKlien.deleteRow(row);
+        
+        // Invalidate cache
+        cache.remove("klien_data");
+        return createJsonResponse({ result: "success" });
+      }
+
+      // --- MANAJEMEN DATA FIGUR ---
+      var ssFigur = SpreadsheetApp.openById(SS_FIGUR_ID);
+      var sheetFigur = ssFigur.getSheetByName("Sheet1") || ssFigur.getSheets()[0];
+
+      if (action === "updateFigur") {
+        var bf = parseInt(params.idBaris || 0, 10);
+        if (isNaN(bf)) bf = 0;
+
+        var vNamaF = validateString(params.nama, "Nama Figur", 100, true);
+        var vJudulF = validateString(params.judul, "Judul Kisah", 300, true);
+        var vKatF = validateString(params.kategori, "Kategori Figur", 50, true);
+        var vSlugF = validateString(params.slug, "Slug", 150, true);
+        var vNarasiF = validateString(params.narasi, "Narasi", 10000, true);
+        var vImgF = validateString(params.image, "Link Gambar", 500, false);
+        var vRelasiF = validateString(params.idRelasiKlien, "Relasi Klien ID", 20, false);
+
+        if (vSlugF.match(/[^a-zA-Z0-9_-]/)) {
+          throw new Error("Format Slug tidak valid. Hanya diperbolehkan huruf, angka, tanda strip (-), atau underscore (_).");
+        }
+
+        if (bf > 0) {
+          bf = validateRowId(bf, sheetFigur.getLastRow(), "Figur (Update)");
+          var rangeF = sheetFigur.getRange(bf, 1, 1, 11);
+          var valuesF = rangeF.getValues()[0];
+
+          valuesF[1] = vNamaF;
+          valuesF[2] = vJudulF;
+          valuesF[3] = vKatF;
+          valuesF[6] = vSlugF;
+          valuesF[7] = vNarasiF;
+          valuesF[9] = vImgF;
+          valuesF[10] = vRelasiF;
+
+          rangeF.setValues([valuesF]);
+        } else {
+          // Tambah baris baru jika bf <= 0
+          var nextId = sheetFigur.getLastRow();
+          sheetFigur.appendRow([
+            nextId,
+            vNamaF,
+            vJudulF,
+            vKatF,
+            "",
+            false,
+            vSlugF,
+            vNarasiF,
+            new Date(),
+            vImgF,
+            vRelasiF
+          ]);
+        }
+
+        // Invalidate cache
+        cache.remove("figur_data");
+        return createJsonResponse({ result: "success" });
+      }
+
+      if (action === "deleteFigur") {
+        var rawBarisFDel = validateString(params.idBaris, "idBaris", 10, true);
+        var rowF = validateRowId(rawBarisFDel, sheetFigur.getLastRow(), "Figur (Delete)");
+        
+        sheetFigur.deleteRow(rowF);
+        
+        // Invalidate cache
+        cache.remove("figur_data");
+        return createJsonResponse({ result: "success" });
+      }
+
+      return createJsonResponse({ status: "Mekarhub Online" });
+
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    console.error("Server API Error: " + err.toString());
+    return createJsonResponse({ error: err.toString(), message: err.message || "Terjadi kesalahan internal pada server Apps Script." });
+  }
 }
 
 function createJsonResponse(obj) {
@@ -234,5 +417,8 @@ function generateDocument(templateId, fileName, data) {
     repl(doc.getBody()); repl(doc.getHeader()); repl(doc.getFooter());
     doc.saveAndClose();
     return copy.getUrl();
-  } catch (e) { return null; }
+  } catch (e) {
+    console.error("Document Generation Failed: " + e.toString());
+    return null;
+  }
 }
