@@ -27,13 +27,27 @@ export interface Figure {
 }
 
 type FigureCsvRow = Record<string, string | undefined>;
-type FigureInput = Partial<Figure> & {
+type FigureInput = Omit<Partial<Figure>, "featured" | "id"> & {
+  featured?: unknown;
+  id?: unknown;
   image?: unknown;
 };
 
 const debugCsvError = (message: string, error: unknown) => {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
     console.error(message, error);
+  }
+};
+
+const debugCsvInfo = (message: string, data: unknown) => {
+  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
+    console.info(message, data);
+  }
+};
+
+const debugCsvWarning = (message: string, data: unknown) => {
+  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
+    console.warn(message, data);
   }
 };
 
@@ -60,6 +74,34 @@ const safeBoolean = (value: unknown): boolean => {
   const normalized = safeText(value).toLowerCase();
   return ["true", "1", "yes", "y"].includes(normalized);
 };
+
+const normalizeHeader = (value: string): string =>
+  safeText(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+
+const getAliasedValue = (row: FigureCsvRow, aliases: string[]): string => {
+  const lookup = new Map<string, string>();
+
+  Object.entries(row).forEach(([key, value]) => {
+    const normalizedKey = normalizeHeader(key);
+    if (normalizedKey && !lookup.has(normalizedKey)) {
+      lookup.set(normalizedKey, safeText(value));
+    }
+  });
+
+  for (const alias of aliases) {
+    const value = lookup.get(normalizeHeader(alias));
+    if (value) return value;
+  }
+
+  return "";
+};
+
+const joinNonEmpty = (values: string[]): string => values.map((value) => safeText(value)).filter(Boolean).join(" - ");
+const hasCsvRowContent = (row: FigureCsvRow): boolean => Object.values(row).some((value) => !!safeText(value));
 
 export const normalizeFigure = (figure: FigureInput, index = 0): Figure => {
   const name = safeText(figure.name, "Kisah Mekarhub");
@@ -91,7 +133,56 @@ export const normalizeFigure = (figure: FigureInput, index = 0): Figure => {
   };
 };
 
-const mapFigureRow = (row: FigureCsvRow, index: number): Figure => normalizeFigure(row as FigureInput, index);
+export const mapFigureRow = (row: FigureCsvRow, index: number): Figure => {
+  const rowValues = Object.values(row).map((value) => safeText(value)).filter(Boolean);
+  const rowHasContent = rowValues.length > 0;
+  const role = getAliasedValue(row, ["jabatan", "role", "posisi"]);
+  const business = getAliasedValue(row, ["usaha", "brand", "bisnis"]);
+  const mappedTitle = getAliasedValue(row, ["judul", "title"]) || joinNonEmpty([role, business]);
+  const mappedStory = getAliasedValue(row, ["narasi", "content", "cerita", "story"]);
+  const mappedImage = getAliasedValue(row, ["image_url", "imageUrl", "image", "foto", "gambar", "Image URL"]);
+
+  const mappedInput: FigureInput = {
+    id: getAliasedValue(row, ["id", "ID", "no", "nomor"]),
+    name: getAliasedValue(row, ["nama", "name"]) || (rowHasContent ? rowValues[0] : ""),
+    title: mappedTitle,
+    category: getAliasedValue(row, ["kategori", "category"]),
+    socialLink: getAliasedValue(row, ["socialLink", "social_link", "mediaSosial", "media sosial", "instagram", "link"]),
+    featured: getAliasedValue(row, ["featured", "unggulan", "highlight"]),
+    slug: getAliasedValue(row, ["slug"]),
+    story: mappedStory,
+    content: mappedStory,
+    excerpt: getAliasedValue(row, ["excerpt", "ringkasan", "kutipan"]),
+    publishedDate: getAliasedValue(row, ["publishedDate", "published_date", "tanggal", "tanggal terbit", "date"]),
+    imageUrl: mappedImage,
+    image: mappedImage,
+    identitasSpirit: getAliasedValue(row, ["identitasSpirit", "identitas spirit"]),
+    titikBalik: getAliasedValue(row, ["titikBalik", "titik balik"]),
+    keunikanAutentik: getAliasedValue(row, ["keunikanAutentik", "keunikan autentik"]),
+    filosofiPelayanan: getAliasedValue(row, ["filosofiPelayanan", "filosofi pelayanan"]),
+    dinamikaTerkini: getAliasedValue(row, ["dinamikaTerkini", "dinamika terkini"]),
+    sisiKemanusiaan: getAliasedValue(row, ["sisiKemanusiaan", "sisi kemanusiaan"]),
+    harapan: getAliasedValue(row, ["harapan"]),
+  };
+
+  if (rowHasContent) {
+    const missingFields = [
+      mappedInput.name ? "" : "name",
+      mappedInput.story ? "" : "story",
+      mappedInput.imageUrl ? "" : "imageUrl",
+    ].filter(Boolean);
+
+    if (missingFields.length > 0) {
+      debugCsvWarning("Kolom CSV figur belum lengkap terpetakan:", {
+        row: index + 1,
+        missingFields,
+        detectedColumns: Object.keys(row),
+      });
+    }
+  }
+
+  return normalizeFigure(mappedInput, index);
+};
 
 // Helper: sync conversion for Google Drive links
 export const convertDriveLink = (url: string): string => {
@@ -149,7 +240,15 @@ export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> =
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map(mapFigureRow).filter((figure) => figure.slug);
+          debugCsvInfo("CSV Google Sheets figur terdeteksi:", {
+            rows: results.data.length,
+            columns: results.meta.fields || [],
+          });
+          const rawFigures: Figure[] = results.data
+            .filter(hasCsvRowContent)
+            .map(mapFigureRow)
+            .filter((figure) => figure.slug);
+          debugCsvInfo("CSV Google Sheets figur hasil mapping:", { figures: rawFigures.length });
           resolve(rawFigures);
         } catch (error) {
           debugCsvError("Gagal parsing CSV Google Sheets:", error);
@@ -173,7 +272,15 @@ export const fetchFiguresLocal = async (): Promise<Figure[]> => {
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map(mapFigureRow).filter((figure) => figure.slug);
+          debugCsvInfo("CSV lokal figur terdeteksi:", {
+            rows: results.data.length,
+            columns: results.meta.fields || [],
+          });
+          const rawFigures: Figure[] = results.data
+            .filter(hasCsvRowContent)
+            .map(mapFigureRow)
+            .filter((figure) => figure.slug);
+          debugCsvInfo("CSV lokal figur hasil mapping:", { figures: rawFigures.length });
           resolve(rawFigures);
         } catch (error) {
           debugCsvError("Gagal parsing CSV lokal:", error);
@@ -191,20 +298,13 @@ export const fetchFiguresLocal = async (): Promise<Figure[]> => {
 export const fetchAllFigures = async (): Promise<Figure[]> => {
   if (import.meta.env.MODE === "test") return defaultFigures;
 
-  if (SHEET_CSV_URL) {
-    try {
-      const remoteData = await fetchFiguresFromSheet(SHEET_CSV_URL);
-      if (remoteData && remoteData.length > 0) return remoteData;
-    } catch {
-      // fetchFiguresFromSheet already logs CSV failures in development.
-    }
-  }
+  if (!SHEET_CSV_URL) return defaultFigures;
 
   try {
-    const localData = await fetchFiguresLocal();
-    if (localData && localData.length > 0) return localData;
+    const remoteData = await fetchFiguresFromSheet(SHEET_CSV_URL);
+    if (remoteData && remoteData.length > 0) return remoteData;
   } catch {
-    return defaultFigures;
+    // fetchFiguresFromSheet already logs CSV failures in development.
   }
 
   return defaultFigures;

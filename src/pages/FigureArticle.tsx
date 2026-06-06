@@ -74,8 +74,13 @@ const isUsableUrl = (url: string): boolean => {
   }
 };
 
-const FigureArticle = () => {
-  const { slug } = useParams<{ slug: string }>();
+type FigureArticleProps = {
+  slugOverride?: string;
+};
+
+const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
+  const { slug: routeSlug } = useParams<{ slug: string }>();
+  const slug = slugOverride ?? routeSlug;
   const normalizedSlug = createSlug(slug);
   
   const [figure, setFigure] = useState<Figure | null>(
