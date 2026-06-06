@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { defaultFigures, fetchAllFigures, type Figure, resolveImageUrl, convertDriveLink, safeText, createSlug } from "@/data/figures";
+import { defaultFigures, fetchFiguresFromSheet, type Figure, SHEET_CSV_URL, resolveImageUrl, convertDriveLink } from "@/data/figures";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
@@ -9,12 +9,11 @@ import { Helmet } from "react-helmet-async";
 import logo from "@/assets/Logo_Mekar_Hub_1.png";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useToast } from "@/hooks/use-toast";
-import { Facebook, MessageCircle, Copy, Share2 } from "lucide-react";
+import { Facebook, MessageCircle, Copy, Share2, Youtube, Image as ImageIcon } from "lucide-react";
 
 const YouTubeEmbed = ({ url }: { url: string }) => {
   const getID = (url: string) => {
-    if (!safeText(url)) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
@@ -35,13 +34,10 @@ const YouTubeEmbed = ({ url }: { url: string }) => {
 };
 
 const StoryImage = ({ url, alt }: { url: string; alt: string }) => {
-  const imageUrl = safeText(url);
-  if (!imageUrl) return null;
-
   // Langsung konversi link Drive agar gambar muncul instan tanpa menunggu resolved state
-  const finalUrl = (imageUrl.includes("drive.google.com") || imageUrl.includes("docs.google.com")) 
-    ? convertDriveLink(imageUrl) 
-    : imageUrl;
+  const finalUrl = (url.includes("drive.google.com") || url.includes("docs.google.com")) 
+    ? convertDriveLink(url) 
+    : url;
 
   return (
     <div className="my-10 space-y-3 reveal-on-scroll">
@@ -58,33 +54,11 @@ const StoryImage = ({ url, alt }: { url: string; alt: string }) => {
   );
 };
 
-const findFigureBySlug = (figures: Figure[], slug: string | undefined): Figure | null => {
-  const normalizedSlug = createSlug(slug);
-  if (!normalizedSlug) return null;
-  return figures.find((figure) => createSlug(figure.slug) === normalizedSlug) || null;
-};
-
-const isUsableUrl = (url: string): boolean => {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-type FigureArticleProps = {
-  slugOverride?: string;
-};
-
-const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
-  const { slug: routeSlug } = useParams<{ slug: string }>();
-  const slug = slugOverride ?? routeSlug;
-  const normalizedSlug = createSlug(slug);
+const FigureArticle = () => {
+  const { slug } = useParams<{ slug: string }>();
   
   const [figure, setFigure] = useState<Figure | null>(
-    findFigureBySlug(defaultFigures, normalizedSlug)
+    defaultFigures.find((f) => f.slug === slug) || null
   );
 
   useScrollReveal([figure]);
@@ -96,12 +70,8 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
   const [offsetY, setOffsetY] = useState(0);
 
   useEffect(() => {
-    const imageUrl = safeText(figure?.imageUrl);
-    setResolvedHeroUrl(undefined);
-    setImgError(false);
-
-    if (imageUrl) {
-      resolveImageUrl(imageUrl).then(setResolvedHeroUrl).catch(() => setImgError(true));
+    if (figure?.imageUrl) {
+      resolveImageUrl(figure.imageUrl).then(setResolvedHeroUrl).catch(() => setImgError(true));
     }
   }, [figure?.imageUrl]);
 
@@ -114,57 +84,49 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
   }, []);
 
   useEffect(() => {
-    const fallbackFigure = findFigureBySlug(defaultFigures, normalizedSlug);
+    const fallbackFigure = defaultFigures.find((f) => f.slug === slug) || null;
     setFigure(fallbackFigure);
     setResolvedHeroUrl(undefined);
     setImgError(false);
     setFetchError(null);
 
+    if (!SHEET_CSV_URL) return;
+    
     setIsLoading(true);
-    fetchAllFigures()
+    fetchFiguresFromSheet(SHEET_CSV_URL)
       .then((data) => {
-        const found = findFigureBySlug(data, normalizedSlug);
+        const found = data.find((f) => f.slug === slug);
         if (found) {
           setFigure(found);
           setImgError(false); // Reset error if we get new data
           setFetchError(null);
-        } else if (!fallbackFigure) {
-          setFigure(null);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Gagal mengambil data dari Google Sheets:", err);
         setFetchError("Koneksi ke arsip terbaru sedang bermasalah.");
       })
       .finally(() => setIsLoading(false));
-  }, [normalizedSlug]);
+  }, [slug]);
 
-  const figureName = safeText(figure?.name, "Kisah Mekarhub");
-  const figureTitle = safeText(figure?.title, "Kisah inspiratif Mekarhub");
-  const figureCategory = safeText(figure?.category, "Kisah");
-  const figureStory = safeText(figure?.story || figure?.content, "Kisah ini sedang disiapkan oleh tim Mekarhub.");
-  const figureSocialLink = safeText(figure?.socialLink);
-  const firstName = figureName.split(" ").filter(Boolean)[0] || "sosok ini";
-  const canOpenSocialLink = isUsableUrl(figureSocialLink);
-
-  const initials = figureName
+  const initials = figure?.name ? figure.name
     .split(" ")
-    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "MH";
+    .toUpperCase() : "MH";
 
   // Fallback image logic
   const ogImage = resolvedHeroUrl && !imgError ? resolvedHeroUrl : logo;
-  const displayTitle = figure ? `${figureName} - Mekarhub` : "Mekarhub";
+  const displayTitle = figure ? `${figure.name} - Mekarhub` : "Mekarhub";
   const metaDescription = figure 
-    ? (figureStory.length > 160 ? `${figureStory.substring(0, 157)}...` : figureStory)
+    ? (figure.story.length > 160 ? `${figure.story.substring(0, 157)}...` : figure.story)
     : "Mekarhub menyajikan kisah inspiratif dari berbagai sosok penggerak di Indonesia.";
 
   const currentUrl = window.location.href;
 
   const handleShareWA = () => {
-    const text = `Baca kisah ${figureName} di Mekarhub! Cek selengkapnya di sini: ${currentUrl}`;
+    const text = `Baca kisah ${figure?.name} di Mekarhub! Cek selengkapnya di sini: ${currentUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -219,8 +181,8 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
               ? "Arsip terbaru sedang tidak dapat diakses. Silakan coba beberapa saat lagi atau kembali ke daftar kisah."
               : "Kisah yang Anda cari belum tersedia di arsip Mekarhub."}
           </p>
-          <Link to="/kisah" className="text-primary font-semibold hover:underline">
-            &larr; Kembali ke Kisah Mereka
+          <Link to="/#archive" className="text-primary font-semibold hover:underline">
+            ← Kembali ke Kisah Mereka
           </Link>
         </div>
       ) : (
@@ -243,7 +205,7 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
             {resolvedHeroUrl && !imgError ? (
               <img 
                 src={resolvedHeroUrl} 
-                alt={figureName} 
+                alt={figure.name} 
                 onError={() => setImgError(true)}
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
@@ -262,7 +224,7 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
             {resolvedHeroUrl && !imgError ? (
               <img 
                 src={resolvedHeroUrl} 
-                alt={figureName} 
+                alt={figure.name} 
                 onError={() => setImgError(true)}
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
@@ -282,13 +244,13 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
           <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-12 md:pb-16 lg:pb-20 reveal-on-scroll transition-all duration-1000" style={{ transitionDelay: '300ms' }}>
             <div className="max-w-5xl mx-auto text-center md:text-left">
               <span className="inline-block bg-primary px-3 py-1 rounded-full text-[10px] md:text-xs font-bold text-white uppercase tracking-widest mb-4 shadow-lg">
-                {figureCategory}
+                {figure.category}
               </span>
               <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
-                {figureName}
+                {figure.name}
               </h1>
               <p className="text-base md:text-xl text-white/70 mt-2 md:mt-4 max-w-2xl font-light drop-shadow-lg">
-                {figureTitle}
+                {figure.title}
               </p>
             </div>
           </div>
@@ -302,7 +264,7 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
           <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground/60 uppercase tracking-widest mb-10">
             <span className="w-8 h-[1px] bg-muted-foreground/30" />
             <span>
-              Dibagikan pada {safeText(figure.publishedDate) && !isNaN(new Date(figure.publishedDate).getTime()) 
+              Dibagikan pada {figure.publishedDate && !isNaN(new Date(figure.publishedDate).getTime()) 
                 ? format(new Date(figure.publishedDate), "d MMMM yyyy", { locale: id })
                 : "Baru-baru ini"}
             </span>
@@ -313,8 +275,8 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
             text-left md:text-justify prose-p:my-0
             prose-blockquote:border-l-4 prose-blockquote:border-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-blockquote:rounded-r-lg
             first-letter:text-6xl first-letter:font-bold first-letter:text-primary first-letter:mr-3 first-letter:float-left first-letter:mt-1">
-            {figureStory.split('\n').map((line, i) => {
-              const trimmedLine = safeText(line);
+            {figure.story.split('\n').map((line, i) => {
+              const trimmedLine = line.trim();
               
               // Cek apakah baris diawali '[' dan diakhiri ']'
               if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
@@ -332,7 +294,7 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
                 if (cleanContent.includes('drive.google.com') || 
                     cleanContent.includes('docs.google.com') || 
                     cleanContent.includes('ibb.co')) {
-                  return <StoryImage key={i} url={cleanContent} alt={`Foto tambahan ${figureName}`} />;
+                  return <StoryImage key={i} url={cleanContent} alt={`Foto tambahan ${figure.name}`} />;
                 }
               }
 
@@ -344,7 +306,7 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
 
           <div className="mt-12 flex justify-center md:justify-start">
             <Link
-              to="/kisah"
+              to="/#archive"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all hover:-translate-x-1"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -395,31 +357,27 @@ const FigureArticle = ({ slugOverride }: FigureArticleProps) => {
         {/* Social link & Conclusion */}
         <div className="mt-20 pt-12 border-t reveal-on-scroll" style={{ transitionDelay: '400ms' }}>
           <p className="text-sm text-muted-foreground mb-6 italic text-center md:text-left">
-            Ingin terhubung lebih jauh dengan {firstName}? 
+            Ingin terhubung lebih jauh dengan {figure.name.split(' ')[0]}? 
           </p>
           <div className="flex justify-center md:justify-start">
-            {canOpenSocialLink ? (
-              <a
-                href={figureSocialLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-3 bg-card border-2 border-primary/20 px-8 py-4 rounded-full text-primary font-bold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all shadow-lg hover:shadow-primary/20 active:scale-95"
+            <a
+              href={figure.socialLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-3 bg-card border-2 border-primary/20 px-8 py-4 rounded-full text-primary font-bold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all shadow-lg hover:shadow-primary/20 active:scale-95"
+            >
+              Ikuti di Media Sosial
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
               >
-                Ikuti di Media Sosial
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
-                >
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/>
-                  <line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-              </a>
-            ) : (
-              <p className="text-sm text-muted-foreground">Tautan media sosial belum tersedia.</p>
-            )}
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
           </div>
         </div>
       </article>

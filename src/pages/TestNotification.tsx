@@ -9,15 +9,6 @@ const TestNotification = () => {
   const [loading, setLoading] = useState(false);
 
   const handleTestEmail = async () => {
-    if (!import.meta.env.DEV) {
-      toast({
-        title: "Tidak tersedia",
-        description: "Halaman test notification hanya aktif di development.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch("/api/notify-admin", {
@@ -25,13 +16,10 @@ const TestNotification = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nama: "Tester Mekarhub",
-          jabatan: "QA Internal",
-          whatsapp: "081234567890",
-          mediaSosial: "@mekarhub",
-          lokasi: "Development Local",
-          deskripsiUsaha: "Ini adalah pesan percobaan dari halaman Testing Notification.",
-          momenBerkesan: "Pengujian alur notifikasi email development.",
-          harapan: "Memastikan notifikasi admin terkirim dengan payload yang valid.",
+          noWa: "081234567890",
+          kategori: "Testing",
+          linkProfil: "https://mekarhub.id",
+          cerita: "Ini adalah pesan percobaan dari halaman Testing Notification.",
         }),
       });
 
@@ -44,10 +32,10 @@ const TestNotification = () => {
         const data = await response.json();
         throw new Error(data.message || "Gagal mengirim email");
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Gagal Mengirim",
-        description: error instanceof Error ? error.message : "Pastikan Anda menjalankan dengan 'vercel dev' untuk mengetes API lokal.",
+        description: error.message || "Pastikan Anda menjalankan dengan 'vercel dev' untuk mengetes API lokal.",
         variant: "destructive",
       });
     } finally {

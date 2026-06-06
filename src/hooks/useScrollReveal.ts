@@ -1,6 +1,6 @@
-import { type DependencyList, useEffect } from "react";
+import { useEffect } from "react";
 
-export const useScrollReveal = (deps: DependencyList = []) => {
+export const useScrollReveal = (deps: any[] = []) => {
   useEffect(() => {
     const observerOptions = {
       threshold: 0.1,

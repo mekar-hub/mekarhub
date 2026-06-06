@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 
-// URL CSV dari Google Sheets. Set lewat VITE_SHEET_CSV_URL agar tidak hardcode deployment URL.
-export const SHEET_CSV_URL = import.meta.env.VITE_SHEET_CSV_URL || "";
+// URL CSV dari Google Sheets (Ganti dengan URL Publish to Web Anda)
+export const SHEET_CSV_URL = import.meta.env.VITE_SHEET_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
 
 export interface Figure {
   id: number;
@@ -12,8 +12,6 @@ export interface Figure {
   featured: boolean;
   slug: string;
   story: string; // Keep for backward compatibility
-  excerpt?: string;
-  content?: string;
   publishedDate: string;
   imageUrl?: string;
   // New structured fields
@@ -25,164 +23,6 @@ export interface Figure {
   sisiKemanusiaan?: string;
   harapan?: string;
 }
-
-type FigureCsvRow = Record<string, string | undefined>;
-type FigureInput = Omit<Partial<Figure>, "featured" | "id"> & {
-  featured?: unknown;
-  id?: unknown;
-  image?: unknown;
-};
-
-const debugCsvError = (message: string, error: unknown) => {
-  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
-    console.error(message, error);
-  }
-};
-
-const debugCsvInfo = (message: string, data: unknown) => {
-  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
-    console.info(message, data);
-  }
-};
-
-const debugCsvWarning = (message: string, data: unknown) => {
-  if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
-    console.warn(message, data);
-  }
-};
-
-export const safeText = (value: unknown, fallback = ""): string => {
-  if (typeof value === "string") return value.trim();
-  if (value === null || value === undefined) return fallback;
-  return String(value).trim();
-};
-
-export const createSlug = (value: unknown): string =>
-  safeText(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-const safeNumber = (value: unknown, fallback: number): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const safeBoolean = (value: unknown): boolean => {
-  const normalized = safeText(value).toLowerCase();
-  return ["true", "1", "yes", "y"].includes(normalized);
-};
-
-const normalizeHeader = (value: string): string =>
-  safeText(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "");
-
-const getAliasedValue = (row: FigureCsvRow, aliases: string[]): string => {
-  const lookup = new Map<string, string>();
-
-  Object.entries(row).forEach(([key, value]) => {
-    const normalizedKey = normalizeHeader(key);
-    if (normalizedKey && !lookup.has(normalizedKey)) {
-      lookup.set(normalizedKey, safeText(value));
-    }
-  });
-
-  for (const alias of aliases) {
-    const value = lookup.get(normalizeHeader(alias));
-    if (value) return value;
-  }
-
-  return "";
-};
-
-const joinNonEmpty = (values: string[]): string => values.map((value) => safeText(value)).filter(Boolean).join(" - ");
-const hasCsvRowContent = (row: FigureCsvRow): boolean => Object.values(row).some((value) => !!safeText(value));
-
-export const normalizeFigure = (figure: FigureInput, index = 0): Figure => {
-  const name = safeText(figure.name, "Kisah Mekarhub");
-  const title = safeText(figure.title);
-  const story = safeText(figure.story || figure.content || figure.excerpt, "Kisah ini sedang disiapkan oleh tim Mekarhub.");
-  const excerpt = safeText(figure.excerpt, story.slice(0, 160));
-  const slug = createSlug(figure.slug) || createSlug(name) || `kisah-${index + 1}`;
-
-  return {
-    id: safeNumber(figure.id, index + 1),
-    name,
-    title,
-    category: safeText(figure.category, "Entrepreneur"),
-    socialLink: safeText(figure.socialLink),
-    featured: typeof figure.featured === "boolean" ? figure.featured : safeBoolean(figure.featured),
-    slug,
-    story,
-    excerpt,
-    content: safeText(figure.content, story),
-    publishedDate: safeText(figure.publishedDate),
-    imageUrl: safeText(figure.imageUrl || figure.image),
-    identitasSpirit: safeText(figure.identitasSpirit),
-    titikBalik: safeText(figure.titikBalik),
-    keunikanAutentik: safeText(figure.keunikanAutentik),
-    filosofiPelayanan: safeText(figure.filosofiPelayanan),
-    dinamikaTerkini: safeText(figure.dinamikaTerkini),
-    sisiKemanusiaan: safeText(figure.sisiKemanusiaan),
-    harapan: safeText(figure.harapan),
-  };
-};
-
-export const mapFigureRow = (row: FigureCsvRow, index: number): Figure => {
-  const rowValues = Object.values(row).map((value) => safeText(value)).filter(Boolean);
-  const rowHasContent = rowValues.length > 0;
-  const role = getAliasedValue(row, ["jabatan", "role", "posisi"]);
-  const business = getAliasedValue(row, ["usaha", "brand", "bisnis"]);
-  const mappedTitle = getAliasedValue(row, ["judul", "title"]) || joinNonEmpty([role, business]);
-  const mappedStory = getAliasedValue(row, ["narasi", "content", "cerita", "story"]);
-  const mappedImage = getAliasedValue(row, ["image_url", "imageUrl", "image", "foto", "gambar", "Image URL"]);
-
-  const mappedInput: FigureInput = {
-    id: getAliasedValue(row, ["id", "ID", "no", "nomor"]),
-    name: getAliasedValue(row, ["nama", "name"]) || (rowHasContent ? rowValues[0] : ""),
-    title: mappedTitle,
-    category: getAliasedValue(row, ["kategori", "category"]),
-    socialLink: getAliasedValue(row, ["socialLink", "social_link", "mediaSosial", "media sosial", "instagram", "link"]),
-    featured: getAliasedValue(row, ["featured", "unggulan", "highlight"]),
-    slug: getAliasedValue(row, ["slug"]),
-    story: mappedStory,
-    content: mappedStory,
-    excerpt: getAliasedValue(row, ["excerpt", "ringkasan", "kutipan"]),
-    publishedDate: getAliasedValue(row, ["publishedDate", "published_date", "tanggal", "tanggal terbit", "date"]),
-    imageUrl: mappedImage,
-    image: mappedImage,
-    identitasSpirit: getAliasedValue(row, ["identitasSpirit", "identitas spirit"]),
-    titikBalik: getAliasedValue(row, ["titikBalik", "titik balik"]),
-    keunikanAutentik: getAliasedValue(row, ["keunikanAutentik", "keunikan autentik"]),
-    filosofiPelayanan: getAliasedValue(row, ["filosofiPelayanan", "filosofi pelayanan"]),
-    dinamikaTerkini: getAliasedValue(row, ["dinamikaTerkini", "dinamika terkini"]),
-    sisiKemanusiaan: getAliasedValue(row, ["sisiKemanusiaan", "sisi kemanusiaan"]),
-    harapan: getAliasedValue(row, ["harapan"]),
-  };
-
-  if (rowHasContent) {
-    const missingFields = [
-      mappedInput.name ? "" : "name",
-      mappedInput.story ? "" : "story",
-      mappedInput.imageUrl ? "" : "imageUrl",
-    ].filter(Boolean);
-
-    if (missingFields.length > 0) {
-      debugCsvWarning("Kolom CSV figur belum lengkap terpetakan:", {
-        row: index + 1,
-        missingFields,
-        detectedColumns: Object.keys(row),
-      });
-    }
-  }
-
-  return normalizeFigure(mappedInput, index);
-};
 
 // Helper: sync conversion for Google Drive links
 export const convertDriveLink = (url: string): string => {
@@ -207,8 +47,8 @@ const resolveImgBBLink = async (url: string): Promise<string> => {
     if (match && match[1]) return match[1];
     const imgMatch = html.match(/id="image-viewer-container"[^>]*>.*?<img src="([^"]+)"/s);
     if (imgMatch && imgMatch[1]) return imgMatch[1];
-  } catch {
-    return url.trim();
+  } catch (e) {
+    console.warn("Gagal resolve ImgBB link:", url, e);
   }
   return url.trim();
 };
@@ -229,88 +69,91 @@ export const resolveImageUrl = async (url: string = ""): Promise<string> => {
 };
 
 export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
-  if (!safeText(csvUrl)) return [];
-
   const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
   return new Promise((resolve, reject) => {
-    Papa.parse<FigureCsvRow>(dynamicUrl, {
+    Papa.parse<any>(dynamicUrl, {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          debugCsvInfo("CSV Google Sheets figur terdeteksi:", {
-            rows: results.data.length,
-            columns: results.meta.fields || [],
-          });
-          const rawFigures: Figure[] = results.data
-            .filter(hasCsvRowContent)
-            .map(mapFigureRow)
-            .filter((figure) => figure.slug);
-          debugCsvInfo("CSV Google Sheets figur hasil mapping:", { figures: rawFigures.length });
+          const rawFigures: Figure[] = results.data.map((row: any) => ({
+            id: Number(row.id),
+            name: row.name || "",
+            title: row.title || "",
+            category: row.category || "Entrepreneur",
+            socialLink: row.socialLink || "",
+            featured: String(row.featured).toLowerCase() === "true",
+            slug: row.slug || "",
+            story: row.story || "",
+            publishedDate: row.publishedDate || "",
+            imageUrl: row.imageUrl || "",
+            identitasSpirit: row.identitasSpirit || "",
+            titikBalik: row.titikBalik || "",
+            keunikanAutentik: row.keunikanAutentik || "",
+            filosofiPelayanan: row.filosofiPelayanan || "",
+            dinamikaTerkini: row.dinamikaTerkini || "",
+            sisiKemanusiaan: row.sisiKemanusiaan || "",
+            harapan: row.harapan || "",
+          }));
           resolve(rawFigures);
-        } catch (error) {
-          debugCsvError("Gagal parsing CSV Google Sheets:", error);
-          reject(error);
-        }
+        } catch (error) { reject(error); }
       },
-      error: (error) => {
-        debugCsvError("Gagal mengambil CSV Google Sheets:", error);
-        reject(error);
-      },
+      error: (error: any) => reject(error),
     });
   });
 };
 
 export const fetchFiguresLocal = async (): Promise<Figure[]> => {
   return new Promise((resolve, reject) => {
-    Papa.parse<FigureCsvRow>("/data_awal_mekarhub.csv", {
+    Papa.parse<any>("/data_awal_mekarhub.csv", {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          debugCsvInfo("CSV lokal figur terdeteksi:", {
-            rows: results.data.length,
-            columns: results.meta.fields || [],
-          });
-          const rawFigures: Figure[] = results.data
-            .filter(hasCsvRowContent)
-            .map(mapFigureRow)
-            .filter((figure) => figure.slug);
-          debugCsvInfo("CSV lokal figur hasil mapping:", { figures: rawFigures.length });
+          const rawFigures: Figure[] = results.data.map((row: any) => ({
+            id: Number(row.id),
+            name: row.name || "",
+            title: row.title || "",
+            category: row.category || "Entrepreneur",
+            socialLink: row.socialLink || "",
+            featured: String(row.featured).toLowerCase() === "true",
+            slug: row.slug || "",
+            story: row.story || "",
+            publishedDate: row.publishedDate || "",
+            imageUrl: row.imageUrl || "",
+            identitasSpirit: row.identitasSpirit || "",
+            titikBalik: row.titikBalik || "",
+            keunikanAutentik: row.keunikanAutentik || "",
+            filosofiPelayanan: row.filosofiPelayanan || "",
+            dinamikaTerkini: row.dinamikaTerkini || "",
+            sisiKemanusiaan: row.sisiKemanusiaan || "",
+            harapan: row.harapan || "",
+          }));
           resolve(rawFigures);
-        } catch (error) {
-          debugCsvError("Gagal parsing CSV lokal:", error);
-          reject(error);
-        }
+        } catch (error) { reject(error); }
       },
-      error: (error) => {
-        debugCsvError("Gagal mengambil CSV lokal:", error);
-        reject(error);
-      },
+      error: (error: any) => reject(error),
     });
   });
 };
 
 export const fetchAllFigures = async (): Promise<Figure[]> => {
-  if (import.meta.env.MODE === "test") return defaultFigures;
-
-  if (!SHEET_CSV_URL) return defaultFigures;
-
   try {
     const remoteData = await fetchFiguresFromSheet(SHEET_CSV_URL);
     if (remoteData && remoteData.length > 0) return remoteData;
-  } catch {
-    // fetchFiguresFromSheet already logs CSV failures in development.
+    throw new Error("Remote data empty");
+  } catch (error) {
+    console.warn("Gagal ambil remote data, mencoba local data...", error);
+    try { return await fetchFiguresLocal(); } 
+    catch (localError) { return defaultFigures; }
   }
-
-  return defaultFigures;
 };
 
-const fallbackFigures: Figure[] = [
+export const defaultFigures: Figure[] = [
   { id: 1, name: "Didiet Rasmana", title: "Owner Toko Buku Singosari", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "didiet-rasmana", story: "Didiet Rasmana membangun Toko Buku Singosari dari nol, menjadikannya ruang literasi yang hidup di tengah komunitas. Dengan dedikasi tinggi, ia membuktikan bahwa bisnis buku masih relevan di era digital. Toko ini bukan sekadar tempat jual beli, melainkan pusat diskusi dan pertukaran ide bagi warga sekitar.", publishedDate: "2025-01-15" },
   { id: 2, name: "Yanti Dhaniaty", title: "Owner Sambel Shamila", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "yanti-dhaniaty", story: "Yanti Dhaniaty mengubah resep sambal warisan keluarga menjadi brand Sambel Shamila yang dikenal luas. Perjalanannya dimulai dari dapur rumah, kini produknya menjangkau berbagai kota. Ia membuktikan bahwa ketekunan dan cinta terhadap kuliner lokal bisa menjadi fondasi bisnis yang berkelanjutan.", publishedDate: "2025-02-10" },
   { id: 3, name: "Firman", title: "Pengelola Warung Gratis Azzahra", category: "Social Leader", socialLink: "https://instagram.com", featured: true, slug: "firman", story: "Firman mendirikan Warung Gratis Azzahra sebagai wujud kepeduliannya terhadap sesama. Setiap hari, warung ini menyajikan makanan gratis bagi siapa saja yang membutuhkan. Gerakan ini menginspirasi banyak orang untuk turut berbagi dan membangun solidaritas sosial di lingkungan sekitar.", publishedDate: "2025-03-05" },
@@ -332,5 +175,3 @@ const fallbackFigures: Figure[] = [
   { id: 19, name: "Fajar Nugroho", title: "Community Health Worker", category: "Social Leader", socialLink: "https://instagram.com", featured: false, slug: "fajar-nugroho", story: "Fajar Nugroho bekerja tanpa lelah untuk meningkatkan akses kesehatan bagi masyarakat di daerah terpencil.", publishedDate: "2025-08-01" },
   { id: 20, name: "Maya Indah", title: "Heritage Storyteller", category: "Educator", socialLink: "https://instagram.com", featured: false, slug: "maya-indah", story: "Maya Indah melestarikan cerita rakyat dan warisan budaya melalui narasi yang menarik dan edukatif.", publishedDate: "2025-08-10" },
 ];
-
-export const defaultFigures: Figure[] = fallbackFigures.map((figure, index) => normalizeFigure(figure, index));
