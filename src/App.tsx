@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import FigureArticle from "./pages/FigureArticle";
@@ -11,8 +11,27 @@ import TestNotification from "./pages/TestNotification";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
+import Navbar from "./components/Navbar";
+import ArchiveSection from "./components/ArchiveSection";
+import CTASection from "./components/CTASection";
+import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
+
+const KisahArchive = () => (
+  <main className="min-h-screen">
+    <Navbar />
+    <ArchiveSection />
+    <CTASection />
+    <Footer />
+  </main>
+);
+
+const KisahDetailTrailingSlashRedirect = () => {
+  const { slug } = useParams<{ slug: string }>();
+
+  return <Navigate to={slug ? `/kisah/${encodeURIComponent(slug)}` : "/kisah"} replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -24,7 +43,10 @@ const App = () => (
           <ScrollToTop />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/kisah" element={<KisahArchive />} />
+            <Route path="/kisah/" element={<Navigate to="/kisah" replace />} />
             <Route path="/kisah/:slug" element={<FigureArticle />} />
+            <Route path="/kisah/:slug/" element={<KisahDetailTrailingSlashRedirect />} />
             <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
             {import.meta.env.DEV && <Route path="/test-notification" element={<TestNotification />} />}
             <Route path="/admin" element={<AdminDashboard />} />

@@ -181,7 +181,7 @@ const FigureArticle = () => {
               ? "Arsip terbaru sedang tidak dapat diakses. Silakan coba beberapa saat lagi atau kembali ke daftar kisah."
               : "Kisah yang Anda cari belum tersedia di arsip Mekarhub."}
           </p>
-          <Link to="/#archive" className="text-primary font-semibold hover:underline">
+          <Link to="/kisah" className="text-primary font-semibold hover:underline">
             ← Kembali ke Kisah Mereka
           </Link>
         </div>
@@ -306,7 +306,7 @@ const FigureArticle = () => {
 
           <div className="mt-12 flex justify-center md:justify-start">
             <Link
-              to="/#archive"
+              to="/kisah"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all hover:-translate-x-1"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
