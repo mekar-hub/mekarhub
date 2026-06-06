@@ -12,6 +12,8 @@ export interface Figure {
   featured: boolean;
   slug: string;
   story: string; // Keep for backward compatibility
+  excerpt?: string;
+  content?: string;
   publishedDate: string;
   imageUrl?: string;
   // New structured fields
@@ -25,26 +27,71 @@ export interface Figure {
 }
 
 type FigureCsvRow = Record<string, string | undefined>;
+type FigureInput = Partial<Figure> & {
+  image?: unknown;
+};
 
-const mapFigureRow = (row: FigureCsvRow): Figure => ({
-  id: Number(row.id),
-  name: row.name || "",
-  title: row.title || "",
-  category: row.category || "Entrepreneur",
-  socialLink: row.socialLink || "",
-  featured: String(row.featured).toLowerCase() === "true",
-  slug: row.slug || "",
-  story: row.story || "",
-  publishedDate: row.publishedDate || "",
-  imageUrl: row.imageUrl || "",
-  identitasSpirit: row.identitasSpirit || "",
-  titikBalik: row.titikBalik || "",
-  keunikanAutentik: row.keunikanAutentik || "",
-  filosofiPelayanan: row.filosofiPelayanan || "",
-  dinamikaTerkini: row.dinamikaTerkini || "",
-  sisiKemanusiaan: row.sisiKemanusiaan || "",
-  harapan: row.harapan || "",
-});
+const debugCsvError = (message: string, error: unknown) => {
+  if (import.meta.env.DEV) {
+    console.error(message, error);
+  }
+};
+
+export const safeText = (value: unknown, fallback = ""): string => {
+  if (typeof value === "string") return value.trim();
+  if (value === null || value === undefined) return fallback;
+  return String(value).trim();
+};
+
+export const createSlug = (value: unknown): string =>
+  safeText(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const safeNumber = (value: unknown, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const safeBoolean = (value: unknown): boolean => {
+  const normalized = safeText(value).toLowerCase();
+  return ["true", "1", "yes", "y"].includes(normalized);
+};
+
+export const normalizeFigure = (figure: FigureInput, index = 0): Figure => {
+  const name = safeText(figure.name, "Kisah Mekarhub");
+  const title = safeText(figure.title);
+  const story = safeText(figure.story || figure.content || figure.excerpt, "Kisah ini sedang disiapkan oleh tim Mekarhub.");
+  const excerpt = safeText(figure.excerpt, story.slice(0, 160));
+  const slug = createSlug(figure.slug) || createSlug(name) || `kisah-${index + 1}`;
+
+  return {
+    id: safeNumber(figure.id, index + 1),
+    name,
+    title,
+    category: safeText(figure.category, "Entrepreneur"),
+    socialLink: safeText(figure.socialLink),
+    featured: typeof figure.featured === "boolean" ? figure.featured : safeBoolean(figure.featured),
+    slug,
+    story,
+    excerpt,
+    content: safeText(figure.content, story),
+    publishedDate: safeText(figure.publishedDate),
+    imageUrl: safeText(figure.imageUrl || figure.image),
+    identitasSpirit: safeText(figure.identitasSpirit),
+    titikBalik: safeText(figure.titikBalik),
+    keunikanAutentik: safeText(figure.keunikanAutentik),
+    filosofiPelayanan: safeText(figure.filosofiPelayanan),
+    dinamikaTerkini: safeText(figure.dinamikaTerkini),
+    sisiKemanusiaan: safeText(figure.sisiKemanusiaan),
+    harapan: safeText(figure.harapan),
+  };
+};
+
+const mapFigureRow = (row: FigureCsvRow, index: number): Figure => normalizeFigure(row as FigureInput, index);
 
 // Helper: sync conversion for Google Drive links
 export const convertDriveLink = (url: string): string => {
@@ -69,8 +116,8 @@ const resolveImgBBLink = async (url: string): Promise<string> => {
     if (match && match[1]) return match[1];
     const imgMatch = html.match(/id="image-viewer-container"[^>]*>.*?<img src="([^"]+)"/s);
     if (imgMatch && imgMatch[1]) return imgMatch[1];
-  } catch (e) {
-    console.warn("Gagal resolve ImgBB link:", url, e);
+  } catch {
+    return url.trim();
   }
   return url.trim();
 };
@@ -91,6 +138,8 @@ export const resolveImageUrl = async (url: string = ""): Promise<string> => {
 };
 
 export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
+  if (!safeText(csvUrl)) return [];
+
   const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
   return new Promise((resolve, reject) => {
     Papa.parse<FigureCsvRow>(dynamicUrl, {
@@ -100,11 +149,17 @@ export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> =
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map(mapFigureRow);
+          const rawFigures: Figure[] = results.data.map(mapFigureRow).filter((figure) => figure.slug);
           resolve(rawFigures);
-        } catch (error) { reject(error); }
+        } catch (error) {
+          debugCsvError("Gagal parsing CSV Google Sheets:", error);
+          reject(error);
+        }
       },
-      error: (error) => reject(error),
+      error: (error) => {
+        debugCsvError("Gagal mengambil CSV Google Sheets:", error);
+        reject(error);
+      },
     });
   });
 };
@@ -118,28 +173,44 @@ export const fetchFiguresLocal = async (): Promise<Figure[]> => {
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map(mapFigureRow);
+          const rawFigures: Figure[] = results.data.map(mapFigureRow).filter((figure) => figure.slug);
           resolve(rawFigures);
-        } catch (error) { reject(error); }
+        } catch (error) {
+          debugCsvError("Gagal parsing CSV lokal:", error);
+          reject(error);
+        }
       },
-      error: (error) => reject(error),
+      error: (error) => {
+        debugCsvError("Gagal mengambil CSV lokal:", error);
+        reject(error);
+      },
     });
   });
 };
 
 export const fetchAllFigures = async (): Promise<Figure[]> => {
-  try {
-    const remoteData = await fetchFiguresFromSheet(SHEET_CSV_URL);
-    if (remoteData && remoteData.length > 0) return remoteData;
-    throw new Error("Remote data empty");
-  } catch (error) {
-    console.warn("Gagal ambil remote data, mencoba local data...", error);
-    try { return await fetchFiguresLocal(); } 
-    catch (localError) { return defaultFigures; }
+  if (import.meta.env.MODE === "test") return defaultFigures;
+
+  if (SHEET_CSV_URL) {
+    try {
+      const remoteData = await fetchFiguresFromSheet(SHEET_CSV_URL);
+      if (remoteData && remoteData.length > 0) return remoteData;
+    } catch {
+      // fetchFiguresFromSheet already logs CSV failures in development.
+    }
   }
+
+  try {
+    const localData = await fetchFiguresLocal();
+    if (localData && localData.length > 0) return localData;
+  } catch {
+    return defaultFigures;
+  }
+
+  return defaultFigures;
 };
 
-export const defaultFigures: Figure[] = [
+const fallbackFigures: Figure[] = [
   { id: 1, name: "Didiet Rasmana", title: "Owner Toko Buku Singosari", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "didiet-rasmana", story: "Didiet Rasmana membangun Toko Buku Singosari dari nol, menjadikannya ruang literasi yang hidup di tengah komunitas. Dengan dedikasi tinggi, ia membuktikan bahwa bisnis buku masih relevan di era digital. Toko ini bukan sekadar tempat jual beli, melainkan pusat diskusi dan pertukaran ide bagi warga sekitar.", publishedDate: "2025-01-15" },
   { id: 2, name: "Yanti Dhaniaty", title: "Owner Sambel Shamila", category: "Entrepreneur", socialLink: "https://instagram.com", featured: true, slug: "yanti-dhaniaty", story: "Yanti Dhaniaty mengubah resep sambal warisan keluarga menjadi brand Sambel Shamila yang dikenal luas. Perjalanannya dimulai dari dapur rumah, kini produknya menjangkau berbagai kota. Ia membuktikan bahwa ketekunan dan cinta terhadap kuliner lokal bisa menjadi fondasi bisnis yang berkelanjutan.", publishedDate: "2025-02-10" },
   { id: 3, name: "Firman", title: "Pengelola Warung Gratis Azzahra", category: "Social Leader", socialLink: "https://instagram.com", featured: true, slug: "firman", story: "Firman mendirikan Warung Gratis Azzahra sebagai wujud kepeduliannya terhadap sesama. Setiap hari, warung ini menyajikan makanan gratis bagi siapa saja yang membutuhkan. Gerakan ini menginspirasi banyak orang untuk turut berbagi dan membangun solidaritas sosial di lingkungan sekitar.", publishedDate: "2025-03-05" },
@@ -161,3 +232,5 @@ export const defaultFigures: Figure[] = [
   { id: 19, name: "Fajar Nugroho", title: "Community Health Worker", category: "Social Leader", socialLink: "https://instagram.com", featured: false, slug: "fajar-nugroho", story: "Fajar Nugroho bekerja tanpa lelah untuk meningkatkan akses kesehatan bagi masyarakat di daerah terpencil.", publishedDate: "2025-08-01" },
   { id: 20, name: "Maya Indah", title: "Heritage Storyteller", category: "Educator", socialLink: "https://instagram.com", featured: false, slug: "maya-indah", story: "Maya Indah melestarikan cerita rakyat dan warisan budaya melalui narasi yang menarik dan edukatif.", publishedDate: "2025-08-10" },
 ];
+
+export const defaultFigures: Figure[] = fallbackFigures.map((figure, index) => normalizeFigure(figure, index));

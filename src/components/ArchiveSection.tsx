@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { defaultFigures, fetchAllFigures, type Figure, SHEET_CSV_URL, resolveImageUrl } from "@/data/figures";
+import { defaultFigures, fetchAllFigures, type Figure, resolveImageUrl, safeText } from "@/data/figures";
 import logo from "@/assets/Logo_Mekar_Hub_1.png";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
@@ -20,12 +20,21 @@ const FigureSkeleton = () => (
 
 const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(undefined);
-  const [isResolving, setIsResolving] = useState(!!figure.imageUrl);
+  const imageUrl = safeText(figure.imageUrl);
+  const name = safeText(figure.name, "Kisah Mekarhub");
+  const title = safeText(figure.title);
+  const category = safeText(figure.category, "Kisah");
+  const slug = safeText(figure.slug);
+  const [isResolving, setIsResolving] = useState(!!imageUrl);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (figure.imageUrl) {
-      resolveImageUrl(figure.imageUrl).then(url => {
+    setResolvedUrl(undefined);
+    setError(false);
+
+    if (imageUrl) {
+      setIsResolving(true);
+      resolveImageUrl(imageUrl).then(url => {
         setResolvedUrl(url);
         setIsResolving(false);
       }).catch(() => {
@@ -35,11 +44,11 @@ const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
     } else {
       setIsResolving(false);
     }
-  }, [figure.imageUrl]);
+  }, [imageUrl]);
 
   return (
     <Link
-      to={`/kisah/${figure.slug}`}
+      to={slug ? `/kisah/${encodeURIComponent(slug)}` : "/kisah"}
       className="group block rounded-lg overflow-hidden bg-card border shadow-sm hover:shadow-lg transition-all duration-500 reveal-on-scroll"
       style={{ transitionDelay: `${(index % 3 + 1) * 100}ms` }}
     >
@@ -52,7 +61,7 @@ const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
         ) : resolvedUrl && !error ? (
           <img 
             src={resolvedUrl} 
-            alt={figure.name} 
+            alt={name} 
             onError={() => setError(true)}
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
@@ -70,14 +79,14 @@ const FigureCard = ({ figure, index }: { figure: Figure, index: number }) => {
         {/* Category badge */}
         <div className="absolute top-3 left-3">
           <span className="bg-primary/90 text-primary-foreground text-[10px] font-bold px-3 py-1 rounded-full shadow-md uppercase tracking-wider">
-            {figure.category}
+            {category}
           </span>
         </div>
       </div>
       {/* Info - High Priority Text */}
       <div className="p-4 border-t">
-        <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{figure.name}</h3>
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 font-light">{figure.title}</p>
+        <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{name}</h3>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 font-light">{title || "Kisah Mekarhub"}</p>
       </div>
     </Link>
   );
@@ -90,29 +99,33 @@ const ArchiveSection = () => {
   const [showAll, setShowAll] = useState(false);
   const [figures, setFigures] = useState<Figure[]>(defaultFigures);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Re-scan for reveal-on-scroll elements whenever figures or filter changes
   useScrollReveal([figures, activeFilter, searchQuery, showAll]);
 
   useEffect(() => {
-    if (!SHEET_CSV_URL) return;
-
     setIsLoading(true);
+    setFetchError(null);
     fetchAllFigures()
       .then((data) => {
         if (data && data.length > 0) {
           setFigures(data);
+        } else {
+          setFigures(defaultFigures);
+          setFetchError("Arsip terbaru sedang tidak tersedia. Menampilkan kisah tersimpan.");
         }
       })
-      .catch((err) => {
-        console.error("Gagal mengambil data:", err);
+      .catch(() => {
+        setFigures(defaultFigures);
+        setFetchError("Arsip terbaru sedang tidak tersedia. Menampilkan kisah tersimpan.");
       })
       .finally(() => {
         setIsLoading(false);
       });
   }, []);
 
-  const normalizedSearch = searchQuery.toLowerCase().trim();
+  const normalizedSearch = safeText(searchQuery).toLowerCase();
   const matchesSearch = (figure: Figure) => {
     if (!normalizedSearch) return true;
     const searchableText = [
@@ -128,7 +141,7 @@ const ArchiveSection = () => {
       figure.dinamikaTerkini,
       figure.sisiKemanusiaan,
       figure.harapan,
-    ].filter(Boolean).join(" ").toLowerCase();
+    ].map((value) => safeText(value)).filter(Boolean).join(" ").toLowerCase();
 
     return searchableText.includes(normalizedSearch);
   };
@@ -136,7 +149,7 @@ const ArchiveSection = () => {
   // Case-insensitive filtering and sorting (Featured first)
   const filtered = (activeFilter === "All Figures"
     ? figures
-    : figures.filter((f) => f.category.toLowerCase() === activeFilter.toLowerCase())
+    : figures.filter((f) => safeText(f.category).toLowerCase() === activeFilter.toLowerCase())
   ).filter(matchesSearch).sort((a, b) => (a.featured === b.featured ? 0 : a.featured ? -1 : 1));
 
   // Logic: display 6 figures initially if showAll is false, otherwise show everything in the current filter.
@@ -150,6 +163,12 @@ const ArchiveSection = () => {
           <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase mb-4">Kisah Mereka</p>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">The Archive</h2>
         </div>
+
+        {fetchError && (
+          <div className="mb-8 rounded-lg border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-muted-foreground">
+            {fetchError}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-12 reveal-on-scroll flex flex-col gap-4 md:flex-row md:items-center">
@@ -188,7 +207,7 @@ const ArchiveSection = () => {
             Array.from({ length: 6 }).map((_, i) => <FigureSkeleton key={i} />)
           ) : displayFigures.length > 0 ? (
             displayFigures.map((figure, index) => (
-              <FigureCard key={`${figure.id}-${figure.slug}`} figure={figure} index={index} />
+              <FigureCard key={`${figure.id}-${safeText(figure.slug, String(index))}`} figure={figure} index={index} />
             ))
           ) : (
             <div className="col-span-full py-20 text-center">
