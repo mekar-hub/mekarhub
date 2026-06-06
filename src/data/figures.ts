@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 
-// URL CSV dari Google Sheets (Ganti dengan URL Publish to Web Anda)
-export const SHEET_CSV_URL = import.meta.env.VITE_SHEET_CSV_URL || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGUQncFJ_ZU-dyfIeIuE1UZUbeLD_xozDKMLdFHjHE78lMsCPuUk20t7VoUhPIb5PzCiHXy0aFsAvo/pub?output=csv";
+// URL CSV dari Google Sheets. Set lewat VITE_SHEET_CSV_URL agar tidak hardcode deployment URL.
+export const SHEET_CSV_URL = import.meta.env.VITE_SHEET_CSV_URL || "";
 
 export interface Figure {
   id: number;
@@ -23,6 +23,28 @@ export interface Figure {
   sisiKemanusiaan?: string;
   harapan?: string;
 }
+
+type FigureCsvRow = Record<string, string | undefined>;
+
+const mapFigureRow = (row: FigureCsvRow): Figure => ({
+  id: Number(row.id),
+  name: row.name || "",
+  title: row.title || "",
+  category: row.category || "Entrepreneur",
+  socialLink: row.socialLink || "",
+  featured: String(row.featured).toLowerCase() === "true",
+  slug: row.slug || "",
+  story: row.story || "",
+  publishedDate: row.publishedDate || "",
+  imageUrl: row.imageUrl || "",
+  identitasSpirit: row.identitasSpirit || "",
+  titikBalik: row.titikBalik || "",
+  keunikanAutentik: row.keunikanAutentik || "",
+  filosofiPelayanan: row.filosofiPelayanan || "",
+  dinamikaTerkini: row.dinamikaTerkini || "",
+  sisiKemanusiaan: row.sisiKemanusiaan || "",
+  harapan: row.harapan || "",
+});
 
 // Helper: sync conversion for Google Drive links
 export const convertDriveLink = (url: string): string => {
@@ -71,72 +93,36 @@ export const resolveImageUrl = async (url: string = ""): Promise<string> => {
 export const fetchFiguresFromSheet = async (csvUrl: string): Promise<Figure[]> => {
   const dynamicUrl = csvUrl.includes("?") ? `${csvUrl}&t=${Date.now()}` : `${csvUrl}?t=${Date.now()}`;
   return new Promise((resolve, reject) => {
-    Papa.parse<any>(dynamicUrl, {
+    Papa.parse<FigureCsvRow>(dynamicUrl, {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map((row: any) => ({
-            id: Number(row.id),
-            name: row.name || "",
-            title: row.title || "",
-            category: row.category || "Entrepreneur",
-            socialLink: row.socialLink || "",
-            featured: String(row.featured).toLowerCase() === "true",
-            slug: row.slug || "",
-            story: row.story || "",
-            publishedDate: row.publishedDate || "",
-            imageUrl: row.imageUrl || "",
-            identitasSpirit: row.identitasSpirit || "",
-            titikBalik: row.titikBalik || "",
-            keunikanAutentik: row.keunikanAutentik || "",
-            filosofiPelayanan: row.filosofiPelayanan || "",
-            dinamikaTerkini: row.dinamikaTerkini || "",
-            sisiKemanusiaan: row.sisiKemanusiaan || "",
-            harapan: row.harapan || "",
-          }));
+          const rawFigures: Figure[] = results.data.map(mapFigureRow);
           resolve(rawFigures);
         } catch (error) { reject(error); }
       },
-      error: (error: any) => reject(error),
+      error: (error) => reject(error),
     });
   });
 };
 
 export const fetchFiguresLocal = async (): Promise<Figure[]> => {
   return new Promise((resolve, reject) => {
-    Papa.parse<any>("/data_awal_mekarhub.csv", {
+    Papa.parse<FigureCsvRow>("/data_awal_mekarhub.csv", {
       download: true,
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         try {
-          const rawFigures: Figure[] = results.data.map((row: any) => ({
-            id: Number(row.id),
-            name: row.name || "",
-            title: row.title || "",
-            category: row.category || "Entrepreneur",
-            socialLink: row.socialLink || "",
-            featured: String(row.featured).toLowerCase() === "true",
-            slug: row.slug || "",
-            story: row.story || "",
-            publishedDate: row.publishedDate || "",
-            imageUrl: row.imageUrl || "",
-            identitasSpirit: row.identitasSpirit || "",
-            titikBalik: row.titikBalik || "",
-            keunikanAutentik: row.keunikanAutentik || "",
-            filosofiPelayanan: row.filosofiPelayanan || "",
-            dinamikaTerkini: row.dinamikaTerkini || "",
-            sisiKemanusiaan: row.sisiKemanusiaan || "",
-            harapan: row.harapan || "",
-          }));
+          const rawFigures: Figure[] = results.data.map(mapFigureRow);
           resolve(rawFigures);
         } catch (error) { reject(error); }
       },
-      error: (error: any) => reject(error),
+      error: (error) => reject(error),
     });
   });
 };

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CheckCircle2, MessageSquare, Send } from "lucide-react";
 
-const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
+const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "";
 
 const FormCalonFigur = () => {
   const { toast } = useToast();
@@ -82,6 +82,10 @@ const FormCalonFigur = () => {
     setLoading(true);
     setNotificationWarning(false);
     try {
+      if (!GAS_ENDPOINT) {
+        throw new Error("Konfigurasi endpoint form publik belum tersedia.");
+      }
+
       const formData = new URLSearchParams();
       formData.append("action", "register");
       formData.append("formType", "register");
@@ -148,7 +152,7 @@ const FormCalonFigur = () => {
         momenBerkesan: "",
         harapan: "",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Submission error:", err);
       toast({
         title: "Gagal Mengirim",

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,6 @@ import {
 import logoRed from "@/assets/Logo_Mekar_Hub_1.png";
 
 // ─── Konstanta ──────────────────────────────────────────────────────────────
-const ADMIN_PIN = "mekarhub2026";
-const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT || "https://script.google.com/macros/s/AKfycbxWKKBQxnUg3FHtwWw2H56fGp3JyHS3bNlHBj006v3yFvYu4cN5JD_TeIJBf52VMUJI0g/exec";
-
 // ─── Tipe Data ───────────────────────────────────────────────────────────────
 interface KlienData {
   idBaris: number;
@@ -160,6 +158,37 @@ const normalizeDateForInput = (value: unknown): string => {
 };
 
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
+type AdminGasPayload = Record<string, string | number | boolean | null | undefined>;
+
+interface AdminGasBaseResponse {
+  error?: string;
+  message?: string;
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
+const adminGasRequest = async <T extends AdminGasBaseResponse>(payload: AdminGasPayload): Promise<T> => {
+  const body = new URLSearchParams();
+  Object.entries(payload).forEach(([key, value]) => {
+    body.append(key, String(value ?? ""));
+  });
+
+  const response = await fetch("/api/admin-gas-proxy", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: body.toString(),
+  });
+
+  const data = (await response.json()) as T;
+  if (!response.ok || data.error) {
+    throw new Error(data.message || data.error || "Permintaan admin gagal diproses.");
+  }
+
+  return data;
+};
+
 const slugify = (text: string) => {
   return text
     .toString()
@@ -177,16 +206,29 @@ const openFigurArticle = (slug: string) => {
 };
 
 // ─── Sub-komponen: Layar Login ────────────────────────────────────────────────
-const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
-  const [pin, setPin] = useState("");
+const LoginScreen = ({ onLogin }: { onLogin: (password: string) => Promise<void> }) => {
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === ADMIN_PIN) {
-      onLogin();
-    } else {
-      toast({ title: "PIN Salah", variant: "destructive" });
+    if (!password.trim()) {
+      toast({ title: "Password wajib diisi", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onLogin(password);
+    } catch (error) {
+      toast({
+        title: "Login Gagal",
+        description: getErrorMessage(error, "Password admin tidak valid."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -200,12 +242,12 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
           <Input 
             type="password" 
             placeholder="••••••" 
-            value={pin} 
-            onChange={(e) => setPin(e.target.value)}
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)}
             className="text-center tracking-[0.5em] text-xl py-7 rounded-2xl border-gray-100 bg-gray-50 focus:bg-white transition-all shadow-inner"
           />
-          <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
-            Masuk Dashboard
+          <button disabled={isSubmitting} className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 disabled:opacity-50">
+            {isSubmitting ? "Memeriksa..." : "Masuk Dashboard"}
           </button>
         </form>
       </div>
@@ -215,7 +257,8 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
 // ─── Komponen Utama ─────────────────────────────────────────────────────────
 const AdminDashboard = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("admin_auth") === "true");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<"beranda" | "klien" | "figur">("beranda");
   const [klienList, setKlienList] = useState<KlienData[]>([]);
@@ -231,9 +274,48 @@ const AdminDashboard = () => {
   const [previewArticle, setPreviewArticle] = useState<FigurData | null>(null);
   const [deletingItem, setDeletingItem] = useState<{ id: number, type: 'klien' | 'figur' } | null>(null);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [kData, fData] = await Promise.all([
+        adminGasRequest<{ data?: KlienData[]; error?: string; message?: string }>({ action: "getKlien" }),
+        adminGasRequest<{ data?: FigurData[]; error?: string; message?: string }>({ action: "getFigur" }),
+      ]);
+      if (!kData.data || !fData.data) throw new Error("Data tidak lengkap");
+      setKlienList(kData.data || []);
+      setFigurList(fData.data || []);
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      toast({
+        title: "Gagal Mengambil Data",
+        description: getErrorMessage(error, "Gagal mengambil data admin."),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch("/api/admin-session");
+        const data = (await response.json()) as { authenticated?: boolean };
+        setIsLoggedIn(Boolean(data.authenticated));
+      } catch (error) {
+        console.error("Session check failed:", error);
+        setIsLoggedIn(false);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+
+    checkSession();
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn) fetchData();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, fetchData]);
 
   useEffect(() => {
     setSearch("");
@@ -276,26 +358,6 @@ const AdminDashboard = () => {
     window.open(url, "_blank");
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [kRes, fRes] = await Promise.all([
-        fetch(`${GAS_ENDPOINT}?action=getKlien&t=${Date.now()}`),
-        fetch(`${GAS_ENDPOINT}?action=getFigur&t=${Date.now()}`)
-      ]);
-      const kData = await kRes.json();
-      const fData = await fRes.json();
-      if (!kData.data || !fData.data) throw new Error("Data tidak lengkap");
-      setKlienList(kData.data || []);
-      setFigurList(fData.data || []);
-    } catch (e: any) {
-      console.error("Fetch Error:", e);
-      toast({ title: "Gagal Mengambil Data", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleWA = (whatsapp: any, name: string) => {
     if (!whatsapp) return;
     let cleanNumber = String(whatsapp).replace(/[^0-9]/g, "");
@@ -309,18 +371,10 @@ const AdminDashboard = () => {
   const handleDeleteKlien = async (idBaris: number) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append("action", "deleteKlien");
-      params.append("idBaris", idBaris.toString());
-      params.append("t", Date.now().toString());
-      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
-      
-      const response = await fetch(finalUrl, { method: "GET" });
-      if (!response.ok) {
-        throw new Error("Gagal terhubung dengan peladen.");
-      }
-      
-      const resData = await response.json();
+      const resData = await adminGasRequest<{ error?: string; message?: string }>({
+        action: "deleteKlien",
+        idBaris,
+      });
       if (resData.error) {
         throw new Error(resData.message || resData.error);
       }
@@ -328,9 +382,9 @@ const AdminDashboard = () => {
       toast({ title: "Berhasil", description: "Klien Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
-    } catch (e: any) {
-      console.error("Delete client error:", e);
-      toast({ title: "Gagal Hapus", description: e.message || "Gagal menghapus klien.", variant: "destructive" });
+    } catch (error) {
+      console.error("Delete client error:", error);
+      toast({ title: "Gagal Hapus", description: getErrorMessage(error, "Gagal menghapus klien."), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -339,18 +393,10 @@ const AdminDashboard = () => {
   const handleDeleteFigur = async (idBaris: number) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append("action", "deleteFigur");
-      params.append("idBaris", idBaris.toString());
-      params.append("t", Date.now().toString());
-      const finalUrl = `${GAS_ENDPOINT}?${params.toString()}`;
-      
-      const response = await fetch(finalUrl, { method: "GET" });
-      if (!response.ok) {
-        throw new Error("Gagal terhubung dengan peladen.");
-      }
-      
-      const resData = await response.json();
+      const resData = await adminGasRequest<{ error?: string; message?: string }>({
+        action: "deleteFigur",
+        idBaris,
+      });
       if (resData.error) {
         throw new Error(resData.message || resData.error);
       }
@@ -358,9 +404,9 @@ const AdminDashboard = () => {
       toast({ title: "Berhasil", description: "Artikel Berhasil Dihapus" });
       setDeletingItem(null);
       await fetchData();
-    } catch (e: any) {
-      console.error("Delete figure error:", e);
-      toast({ title: "Gagal Hapus", description: e.message || "Gagal menghapus artikel.", variant: "destructive" });
+    } catch (error) {
+      console.error("Delete figure error:", error);
+      toast({ title: "Gagal Hapus", description: getErrorMessage(error, "Gagal menghapus artikel."), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -379,19 +425,45 @@ const AdminDashboard = () => {
     }));
   };
 
+  const handleLogin = async (password: string) => {
+    const response = await fetch("/api/admin-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = (await response.json()) as { authenticated?: boolean; message?: string };
+    if (!response.ok || !data.authenticated) {
+      throw new Error(data.message || "Password admin tidak valid.");
+    }
+    setIsLoggedIn(true);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/admin-logout", { method: "POST" });
+    } finally {
+      setIsLoggedIn(false);
+      setKlienList([]);
+      setFigurList([]);
+      setEditingKlien(null);
+      setEditingFigur(null);
+      navigate("/admin");
+    }
+  };
+
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!isLoggedIn) return (
     <LoginScreen 
-      onLogin={() => {
-        localStorage.setItem("admin_auth", "true");
-        setIsLoggedIn(true);
-      }} 
+      onLogin={handleLogin} 
     />
   );
-
-  const handleSignOut = () => {
-    localStorage.removeItem("admin_auth");
-    setIsLoggedIn(false);
-  };
 
   return (
     <div className="flex min-h-screen bg-[#FDFDFD] font-sans text-[#2D3436]">
@@ -812,29 +884,21 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
     try {
       const targetRange = `${form.targetProduksiStart} - ${form.targetProduksiEnd}`;
       
-      const bodyParams = new URLSearchParams();
-      bodyParams.append("action", "updateKlien");
-      bodyParams.append("idBaris", klien.idBaris.toString());
+      const bodyParams: AdminGasPayload = {
+        action: "updateKlien",
+        idBaris: klien.idBaris,
+      };
       
       // Bungkus semua data form ke dalam URLSearchParams
-      Object.keys(form).forEach(key => {
+      (Object.entries(form) as [keyof AdminForm, string][]).forEach(([key, value]) => {
         if (key !== "targetProduksiStart" && key !== "targetProduksiEnd") {
-          bodyParams.append(key, String((form as any)[key] || ""));
+          bodyParams[key] = value || "";
         }
       });
-      bodyParams.append("targetProduksi", targetRange);
+      bodyParams.targetProduksi = targetRange;
 
       // Gunakan POST dengan mode CORS (Default) agar bisa membaca JSON
-      const response = await fetch(GAS_ENDPOINT, {
-        method: "POST",
-        body: bodyParams
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal terhubung dengan peladen.");
-      }
-
-      const resData = await response.json();
+      const resData = await adminGasRequest<{ error?: string; message?: string }>(bodyParams);
       if (resData.error) {
         throw new Error(resData.message || resData.error);
       }
@@ -843,9 +907,9 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       toast({ title: "Berhasil", description: "Data & Dokumen Berhasil Diperbarui" });
       onSave(); 
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Update Error:", error);
-      toast({ title: "Gagal Update", description: error.message || "Terjadi kesalahan saat memperbarui data.", variant: "destructive" });
+      toast({ title: "Gagal Update", description: getErrorMessage(error, "Terjadi kesalahan saat memperbarui data."), variant: "destructive" });
       setLoading(false);
     }
   };
@@ -1007,28 +1071,20 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
     }
 
     try {
-      const bodyParams = new URLSearchParams();
-      bodyParams.append("action", "updateFigur");
-      bodyParams.append("idBaris", String(form.idBaris || 0));
-      bodyParams.append("nama", form.nama || "");
-      bodyParams.append("judul", form.judul || "");
-      bodyParams.append("kategori", form.kategori || "");
-      bodyParams.append("slug", form.slug || "");
-      bodyParams.append("narasi", form.narasi || "");
-      bodyParams.append("image", form.image || "");
-      bodyParams.append("idRelasiKlien", form.idRelasiKlien || "");
+      const bodyParams: AdminGasPayload = {
+        action: "updateFigur",
+        idBaris: String(form.idBaris || 0),
+        nama: form.nama || "",
+        judul: form.judul || "",
+        kategori: form.kategori || "",
+        slug: form.slug || "",
+        narasi: form.narasi || "",
+        image: form.image || "",
+        idRelasiKlien: form.idRelasiKlien || "",
+      };
 
       // Gunakan POST dengan mode CORS (Default) agar bisa membaca JSON
-      const response = await fetch(GAS_ENDPOINT, {
-        method: "POST",
-        body: bodyParams
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal terhubung dengan peladen.");
-      }
-
-      const resData = await response.json();
+      const resData = await adminGasRequest<{ error?: string; message?: string }>(bodyParams);
       if (resData.error) {
         throw new Error(resData.message || resData.error);
       }
@@ -1037,9 +1093,9 @@ const EditFigurModal = ({ figur, onClose, onSave }: any) => {
       toast({ title: "Berhasil", description: "Artikel Berhasil Disimpan" });
       onSave(); 
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Save Error:", error);
-      toast({ title: "Gagal Simpan", description: error.message || "Terjadi kesalahan saat menyimpan artikel.", variant: "destructive" });
+      toast({ title: "Gagal Simpan", description: getErrorMessage(error, "Terjadi kesalahan saat menyimpan artikel."), variant: "destructive" });
       setLoading(false);
     }
   };

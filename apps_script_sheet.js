@@ -28,6 +28,24 @@ var BRIEF_TEMPLATE_ID = "1GXSrTrczsJfn39McHk7aUoG5Bizx2vihzUJeRqpRuOQ";
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
+function isAdminAction_(action) {
+  return [
+    "getKlien",
+    "getFigur",
+    "updateKlien",
+    "deleteKlien",
+    "updateFigur",
+    "deleteFigur"
+  ].indexOf(String(action || "")) !== -1;
+}
+
+function isAuthorizedAdminRequest_(params) {
+  var expectedSecret = PropertiesService.getScriptProperties().getProperty("GAS_SHARED_SECRET");
+  if (!expectedSecret) return false;
+  var providedSecret = String((params && params.gasSharedSecret) || "");
+  return providedSecret && providedSecret === expectedSecret;
+}
+
 // --- UTILITY VALIDASI DATA ---
 function validateString(val, fieldName, maxLength, isRequired) {
   var str = String(val || "").trim();
@@ -72,9 +90,11 @@ function handleRequest(e) {
       } catch (i) {
         var parts = e.postData.contents.split('&');
         parts.forEach(function(p) {
-          var pair = p.split('=');
-          if (pair.length === 2) {
-            params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1].replace(/\+/g, " "));
+          var separatorIndex = p.indexOf('=');
+          if (separatorIndex >= 0) {
+            var key = p.substring(0, separatorIndex);
+            var value = p.substring(separatorIndex + 1);
+            params[decodeURIComponent(key)] = decodeURIComponent(value.replace(/\+/g, " "));
           }
         });
       }
@@ -82,6 +102,10 @@ function handleRequest(e) {
     
     var safe = function(val) { return String(val || "").trim(); };
     var action = safe(params.action || params.formType);
+
+    if (isAdminAction_(action) && !isAuthorizedAdminRequest_(params)) {
+      return createJsonResponse({ success: false, error: "Unauthorized" });
+    }
     
     var ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
     var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];

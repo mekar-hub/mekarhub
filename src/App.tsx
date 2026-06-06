@@ -26,7 +26,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/kisah/:slug" element={<FigureArticle />} />
             <Route path="/kolaborasi-kisah" element={<FormCalonFigur />} />
-            <Route path="/test-notification" element={<TestNotification />} />
+            {import.meta.env.DEV && <Route path="/test-notification" element={<TestNotification />} />}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/klien/:clientSlug" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

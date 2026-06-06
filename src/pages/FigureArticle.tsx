@@ -13,7 +13,7 @@ import { Facebook, MessageCircle, Copy, Share2, Youtube, Image as ImageIcon } fr
 
 const YouTubeEmbed = ({ url }: { url: string }) => {
   const getID = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };

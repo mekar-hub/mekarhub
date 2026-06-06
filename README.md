@@ -60,6 +60,25 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Mekarhub Web production setup
+
+This project uses npm as the package manager. Use `npm install` so installs follow `package-lock.json`.
+
+Admin access is handled server-side. The dashboard no longer uses a hardcoded client PIN or `localStorage` as proof of login. Set these serverless environment variables before deploying:
+
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+- `GAS_ENDPOINT`
+- `GAS_SHARED_SECRET`
+- `SITE_BASE_URL`
+- `RESEND_API_KEY`
+- `ADMIN_NOTIFICATION_EMAIL`
+- `RESEND_FROM_EMAIL`
+
+Only public browser variables should use the `VITE_` prefix, such as `VITE_GAS_ENDPOINT` for the public lead form and `VITE_SHEET_CSV_URL` for the public archive. Configure the same `GAS_SHARED_SECRET` as an Apps Script property named `GAS_SHARED_SECRET`; admin dashboard operations must go through `/api/admin-gas-proxy`.
+
+Before production deploy, update Apps Script with the latest `apps_script_sheet.js`, set Script Property `GAS_SHARED_SECRET`, create a new Apps Script deployment version, then redeploy Vercel after all environment variables are set. See `DOCS.md` for the full smoke test checklist.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
