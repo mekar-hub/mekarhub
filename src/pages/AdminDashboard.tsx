@@ -790,15 +790,17 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
     e.preventDefault();
     setLoading(true);
     
-    // Hentikan pengiriman formulir jika kolom wajib belum terisi
     if (
-      !form.nama.trim() ||
-      !form.jabatan.trim() ||
-      !form.whatsapp.trim() ||
-      !form.lokasi.trim() ||
-      !form.deskripsiUsaha.trim() ||
-      !form.momenBerkesan.trim() ||
-      !form.harapan.trim()
+      activeTab === 'biodata' &&
+      (
+        !form.nama.trim() ||
+        !form.jabatan.trim() ||
+        !form.whatsapp.trim() ||
+        !form.lokasi.trim() ||
+        !form.deskripsiUsaha.trim() ||
+        !form.momenBerkesan.trim() ||
+        !form.harapan.trim()
+      )
     ) {
       toast({
         title: "Mohon Lengkapi Data",
@@ -810,25 +812,63 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
     }
 
     try {
-      const targetRange = `${form.targetProduksiStart} - ${form.targetProduksiEnd}`;
+      const targetRange = form.targetProduksiStart || form.targetProduksiEnd
+        ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
+        : "";
       
       const bodyParams = new URLSearchParams();
       bodyParams.append("action", "updateKlien");
       bodyParams.append("idBaris", klien.idBaris.toString());
-      
-      // Bungkus semua data form ke dalam URLSearchParams
-      Object.keys(form).forEach(key => {
-        if (key !== "targetProduksiStart" && key !== "targetProduksiEnd") {
-          bodyParams.append(key, String((form as any)[key] || ""));
-        }
-      });
-      bodyParams.append("targetProduksi", targetRange);
 
-      // Gunakan POST dengan mode CORS (Default) agar bisa membaca JSON
-      const response = await fetch(GAS_ENDPOINT, {
-        method: "POST",
-        body: bodyParams
+      const fieldKeys = activeTab === 'produksi'
+        ? [
+            "namaLead",
+            "namaVideografer",
+            "namaEditor",
+            "ideBesar",
+            "visualTone",
+            "hook",
+            "catatanTeknis",
+            "nilaiKontrak",
+            "nomorRekening",
+            "statusPelunasan",
+            "jadwalVisit",
+            "statusProduksi",
+            "linkHasilFinal",
+          ]
+        : [
+            "nama",
+            "jabatan",
+            "whatsapp",
+            "mediaSosial",
+            "lokasi",
+            "deskripsiUsaha",
+            "momenBerkesan",
+            "harapan",
+            "kategori",
+          ];
+
+      fieldKeys.forEach(key => {
+        bodyParams.append(key, String((form as any)[key] || ""));
       });
+
+      if (activeTab === 'produksi') {
+        bodyParams.append("targetProduksi", targetRange);
+      }
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+
+      let response: Response;
+      try {
+        response = await fetch(GAS_ENDPOINT, {
+          method: "POST",
+          body: bodyParams,
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         throw new Error("Gagal terhubung dengan peladen.");
@@ -840,12 +880,15 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       }
 
       setLoading(false);
-      toast({ title: "Berhasil", description: "Data & Dokumen Berhasil Diperbarui" });
+      toast({ title: "Berhasil", description: "Data berhasil diperbarui" });
       onSave(); 
       onClose();
     } catch (error: any) {
       console.error("Update Error:", error);
-      toast({ title: "Gagal Update", description: error.message || "Terjadi kesalahan saat memperbarui data.", variant: "destructive" });
+      const message = error?.name === "AbortError"
+        ? "Server terlalu lama merespons. Data belum bisa dipastikan tersimpan, silakan cek ulang lalu coba lagi."
+        : error.message || "Terjadi kesalahan saat memperbarui data.";
+      toast({ title: "Gagal Update", description: message, variant: "destructive" });
       setLoading(false);
     }
   };

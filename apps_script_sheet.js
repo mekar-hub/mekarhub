@@ -248,21 +248,25 @@ function handleRequest(e) {
         }
         if (params.linkHasilFinal !== undefined) values[31] = validateString(params.linkHasilFinal, "Link Hasil Final", 500, false);
 
-        // Buat objek data dari memory array values untuk diserahkan ke generator dokumen
-        var dataObj = {
-          idBaris: baris, nama: values[1], jabatan: values[2], whatsapp: values[3], medsos: values[4],
-          lokasi: values[5], usaha: values[6], titikBalik: values[7], harapan: values[12],
-          ideBesar: values[16], visualTone: values[17], hook: values[18], catatan: values[19],
-          rekening: values[23], target: values[24], lead: values[26], video: values[27], editor: values[28],
-          visit: values[29]
-        };
+        var briefUrl = values[15];
+        var mouUrl = values[21];
+        var shouldRegenerateDocs = String(params.regenerateDocs || "").toLowerCase() === "true";
+        if (shouldRegenerateDocs) {
+          // Generate dokumen hanya saat diminta eksplisit agar update produksi tidak timeout.
+          var dataObj = {
+            idBaris: baris, nama: values[1], jabatan: values[2], whatsapp: values[3], medsos: values[4],
+            lokasi: values[5], usaha: values[6], titikBalik: values[7], harapan: values[12],
+            ideBesar: values[16], visualTone: values[17], hook: values[18], catatan: values[19],
+            rekening: values[23], target: values[24], lead: values[26], video: values[27], editor: values[28],
+            visit: values[29]
+          };
 
-        // Otomatisasi generate Brief & MoU di Google Drive
-        var briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
-        var mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
-        
-        if (briefUrl) values[15] = briefUrl;
-        if (mouUrl) values[21] = mouUrl;
+          briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
+          mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
+          
+          if (briefUrl) values[15] = briefUrl;
+          if (mouUrl) values[21] = mouUrl;
+        }
 
         // Tulis semua update ke sheet klien secara sekaligus
         range.setValues([values]);
