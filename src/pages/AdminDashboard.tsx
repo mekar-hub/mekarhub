@@ -55,13 +55,16 @@ interface KlienData {
   nomorRekening: string;
   targetProduksi: string;
   statusPelunasan: string;
-  namaLead: string;
-  namaVideografer: string;
-  namaEditor: string;
+  creativeLead: string;
+  videografer: string;
+  editor: string;
   jadwalVisit: string;
   statusProduksi: string;
   linkHasilFinal: string;
   savedRekening: string;
+  namaLead?: string;
+  namaVideografer?: string;
+  namaEditor?: string;
 }
 
 interface AdminForm {
@@ -74,9 +77,9 @@ interface AdminForm {
   momenBerkesan: string;
   harapan: string;
   kategori: string;
-  namaLead: string;
-  namaVideografer: string;
-  namaEditor: string;
+  creativeLead: string;
+  videografer: string;
+  editor: string;
   ideBesar: string;
   visualTone: string;
   hook: string;
@@ -160,6 +163,30 @@ const normalizeDateForInput = (value: unknown): string => {
 };
 
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
+const normalizeStatusPelunasan = (value: unknown): "Lunas" | "Belum" => {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "lunas" || raw === "sudah lunas") return "Lunas";
+  return "Belum";
+};
+
+const normalizeStatusProduksi = (value: unknown): "Proses" | "Tunda" | "Selesai" => {
+  const raw = String(value || "").trim();
+  return raw === "Selesai" || raw === "Tunda" || raw === "Proses" ? raw : "Proses";
+};
+
+const isSheetStatusValue = (value: unknown): boolean => {
+  const raw = String(value || "").trim().toLowerCase();
+  return ["lunas", "belum", "sudah lunas", "belum lunas", "proses", "selesai", "tunda"].includes(raw);
+};
+
+const normalizeTargetRangeForInput = (value: unknown): [string, string] => {
+  const raw = String(value || "").trim();
+  if (!raw) return ["", ""];
+
+  const parts = raw.split(/\s+-\s+/);
+  return [normalizeDateForInput(parts[0]), normalizeDateForInput(parts[1])];
+};
+
 const slugify = (text: string) => {
   return text
     .toString()
@@ -755,7 +782,7 @@ const ActionBtn = ({ onClick, icon, color, ariaLabel, variant, destructive }: an
 const EditKlienModal = ({ klien, onClose, onSave }: any) => {
   const [activeTab, setActiveTab] = useState<'produksi' | 'biodata'>('biodata');
   const [form, setForm] = useState<AdminForm>(() => {
-    const [start, end] = (klien.targetProduksi || "").split(" - ");
+    const [start, end] = normalizeTargetRangeForInput(klien.targetProduksi);
     return {
       nama: klien.nama || "",
       jabatan: klien.jabatan || "",
@@ -766,21 +793,21 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       momenBerkesan: klien.momenBerkesan || "",
       harapan: klien.harapan || "",
       kategori: klien.kategori || "Klien",
-      namaLead: klien.namaLead || "",
-      namaVideografer: klien.namaVideografer || "",
-      namaEditor: klien.namaEditor || "",
+      creativeLead: klien.creativeLead || klien.namaLead || "",
+      videografer: klien.videografer || klien.namaVideografer || "",
+      editor: klien.editor || klien.namaEditor || "",
       ideBesar: klien.ideBesar || "",
       visualTone: klien.visualTone || "",
       hook: klien.hook || "",
       catatanTeknis: klien.catatanTeknis || "",
       nilaiKontrak: klien.nilaiKontrak || "",
       nomorRekening: klien.nomorRekening || klien.savedRekening || "",
-      statusPelunasan: klien.statusPelunasan || "Belum",
+      statusPelunasan: normalizeStatusPelunasan(klien.statusPelunasan),
       targetProduksiStart: start || "",
       targetProduksiEnd: end || "",
       jadwalVisit: normalizeDateForInput(klien.jadwalVisit),
-      statusProduksi: klien.statusProduksi || "Proses",
-      linkHasilFinal: klien.linkHasilFinal || "",
+      statusProduksi: normalizeStatusProduksi(klien.statusProduksi),
+      linkHasilFinal: isSheetStatusValue(klien.linkHasilFinal) ? "" : klien.linkHasilFinal || "",
     };
   });
   const [loading, setLoading] = useState(false);
@@ -812,48 +839,44 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
     }
 
     try {
-      const targetRange = form.targetProduksiStart || form.targetProduksiEnd
-        ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
-        : "";
-      
       const bodyParams = new URLSearchParams();
       bodyParams.append("action", "updateKlien");
       bodyParams.append("idBaris", klien.idBaris.toString());
 
-      const fieldKeys = activeTab === 'produksi'
-        ? [
-            "namaLead",
-            "namaVideografer",
-            "namaEditor",
-            "ideBesar",
-            "visualTone",
-            "hook",
-            "catatanTeknis",
-            "nilaiKontrak",
-            "nomorRekening",
-            "statusPelunasan",
-            "jadwalVisit",
-            "statusProduksi",
-            "linkHasilFinal",
-          ]
-        : [
-            "nama",
-            "jabatan",
-            "whatsapp",
-            "mediaSosial",
-            "lokasi",
-            "deskripsiUsaha",
-            "momenBerkesan",
-            "harapan",
-            "kategori",
-          ];
-
-      fieldKeys.forEach(key => {
-        bodyParams.append(key, String((form as any)[key] || ""));
-      });
-
       if (activeTab === 'produksi') {
+        const targetRange = form.targetProduksiStart && form.targetProduksiEnd
+          ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
+          : form.targetProduksiStart || form.targetProduksiEnd || "";
+        const finalLink = isSheetStatusValue(form.linkHasilFinal) ? "" : String(form.linkHasilFinal || "").trim();
+
+        bodyParams.append("nilaiKontrak", String(form.nilaiKontrak || ""));
+        bodyParams.append("nomorRekening", String(form.nomorRekening || ""));
         bodyParams.append("targetProduksi", targetRange);
+        bodyParams.append("statusPelunasan", normalizeStatusPelunasan(form.statusPelunasan));
+        bodyParams.append("creativeLead", String(form.creativeLead || ""));
+        bodyParams.append("videografer", String(form.videografer || ""));
+        bodyParams.append("editor", String(form.editor || ""));
+        bodyParams.append("jadwalVisit", String(form.jadwalVisit || ""));
+        bodyParams.append("statusProduksi", normalizeStatusProduksi(form.statusProduksi));
+        bodyParams.append("linkHasilFinal", finalLink);
+        bodyParams.append("ideBesar", String(form.ideBesar || ""));
+        bodyParams.append("visualTone", String(form.visualTone || ""));
+        bodyParams.append("hook", String(form.hook || ""));
+        bodyParams.append("catatanTeknis", String(form.catatanTeknis || ""));
+      } else {
+        [
+          "nama",
+          "jabatan",
+          "whatsapp",
+          "mediaSosial",
+          "lokasi",
+          "deskripsiUsaha",
+          "momenBerkesan",
+          "harapan",
+          "kategori",
+        ].forEach(key => {
+          bodyParams.append(key, String((form as any)[key] || ""));
+        });
       }
 
       const controller = new AbortController();
@@ -919,9 +942,9 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
               <div className="space-y-8">
                 <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2"><Activity size={14}/> Produksi</h4>
                 <div className="space-y-6">
-                  <Inp label="Nama Lead" value={form.namaLead} onChange={(v: string) => setForm({...form, namaLead: v})} />
-                  <Inp label="Videografer" value={form.namaVideografer} onChange={(v: string) => setForm({...form, namaVideografer: v})} />
-                  <Inp label="Editor" value={form.namaEditor} onChange={(v: string) => setForm({...form, namaEditor: v})} />
+                  <Inp label="Nama Lead" value={form.creativeLead} onChange={(v: string) => setForm({...form, creativeLead: v})} />
+                  <Inp label="Videografer" value={form.videografer} onChange={(v: string) => setForm({...form, videografer: v})} />
+                  <Inp label="Editor" value={form.editor} onChange={(v: string) => setForm({...form, editor: v})} />
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-gray-400">Target Range</Label>
                     <div className="flex gap-2">

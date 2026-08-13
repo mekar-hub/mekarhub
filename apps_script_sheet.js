@@ -25,6 +25,34 @@ var FOLDER_ID = "1D4fLm-jDvpIUjtZAIZ7CVrPrUlSRzaGd";
 var MOU_TEMPLATE_ID = "1CMQpLqKrMTnUp88RAMPYiIZzQk3QZjkuLRAxtXW0W54";
 var BRIEF_TEMPLATE_ID = "1GXSrTrczsJfn39McHk7aUoG5Bizx2vihzUJeRqpRuOQ";
 
+var KLIEN_COLS = {
+  NAMA: 2,
+  JABATAN: 3,
+  WHATSAPP: 4,
+  MEDIA_SOSIAL: 5,
+  LOKASI: 6,
+  DESKRIPSI_USAHA: 7,
+  MOMEN_BERKESAN: 8,
+  HARAPAN: 13,
+  KATEGORI: 14,
+  LINK_BRIEF: 16,
+  IDE_BESAR: 17,
+  VISUAL_TONE: 18,
+  HOOK: 19,
+  CATATAN_TEKNIS: 20,
+  LINK_MOU: 22,
+  NILAI_KONTRAK: 23,
+  NOMOR_REKENING: 24,
+  TARGET_PRODUKSI: 25,
+  STATUS_PELUNASAN: 26,
+  CREATIVE_LEAD: 27,
+  VIDEOGRAFER: 28,
+  EDITOR: 29,
+  JADWAL_VISIT: 30,
+  STATUS_PRODUKSI: 31,
+  LINK_HASIL_FINAL: 32
+};
+
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
@@ -59,6 +87,45 @@ function validateRowId(val, lastRow, fieldName) {
     throw new Error("ID Baris '" + fieldName + "' tidak valid (" + val + "). Harus berupa baris yang valid di spreadsheet.");
   }
   return num;
+}
+
+function colIndex(colNumber) {
+  return colNumber - 1;
+}
+
+function firstDefinedParam(params, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    if (params[keys[i]] !== undefined) return params[keys[i]];
+  }
+  return undefined;
+}
+
+function normalizeStatusPelunasanValue(value) {
+  var raw = String(value || "").trim().toLowerCase();
+  if (raw === "lunas" || raw === "sudah lunas") return "Lunas";
+  return "Belum";
+}
+
+function normalizeStatusProduksiValue(value) {
+  var raw = String(value || "").trim();
+  if (raw === "Selesai" || raw === "Tunda" || raw === "Proses") return raw;
+  return "Proses";
+}
+
+function isPaymentStatusValue(value) {
+  var raw = String(value || "").trim().toLowerCase();
+  return raw === "lunas" || raw === "belum" || raw === "sudah lunas" || raw === "belum lunas";
+}
+
+function isProductionStatusValue(value) {
+  var raw = String(value || "").trim().toLowerCase();
+  return raw === "proses" || raw === "selesai" || raw === "tunda";
+}
+
+function normalizeFinalLinkValue(value) {
+  var raw = String(value || "").trim();
+  if (isPaymentStatusValue(raw) || isProductionStatusValue(raw)) return "";
+  return raw;
 }
 
 function handleRequest(e) {
@@ -100,31 +167,34 @@ function handleRequest(e) {
         if (dataK[i][1]) {
           resK.push({
             idBaris: i + 1,
-            nama: dataK[i][1],
-            jabatan: dataK[i][2],
-            whatsapp: dataK[i][3],
-            mediaSosial: dataK[i][4],
-            lokasi: dataK[i][5],
-            deskripsiUsaha: dataK[i][6],
-            momenBerkesan: dataK[i][7],
-            harapan: dataK[i][12],
-            kategori: dataK[i][13],
-            linkBrief: dataK[i][15],
-            ideBesar: dataK[i][16],
-            visualTone: dataK[i][17], 
-            hook: dataK[i][18],
-            catatanTeknis: dataK[i][19],
-            linkMoU: dataK[i][21],
-            nilaiKontrak: dataK[i][22],
-            nomorRekening: dataK[i][23],
-            targetProduksi: dataK[i][24],
-            statusPelunasan: dataK[i][25],
-            namaLead: dataK[i][26],
-            namaVideografer: dataK[i][27],
-            namaEditor: dataK[i][28],
-            jadwalVisit: dataK[i][29],
-            statusProduksi: dataK[i][30],
-            linkHasilFinal: dataK[i][31]
+            nama: dataK[i][colIndex(KLIEN_COLS.NAMA)],
+            jabatan: dataK[i][colIndex(KLIEN_COLS.JABATAN)],
+            whatsapp: dataK[i][colIndex(KLIEN_COLS.WHATSAPP)],
+            mediaSosial: dataK[i][colIndex(KLIEN_COLS.MEDIA_SOSIAL)],
+            lokasi: dataK[i][colIndex(KLIEN_COLS.LOKASI)],
+            deskripsiUsaha: dataK[i][colIndex(KLIEN_COLS.DESKRIPSI_USAHA)],
+            momenBerkesan: dataK[i][colIndex(KLIEN_COLS.MOMEN_BERKESAN)],
+            harapan: dataK[i][colIndex(KLIEN_COLS.HARAPAN)],
+            kategori: dataK[i][colIndex(KLIEN_COLS.KATEGORI)],
+            linkBrief: dataK[i][colIndex(KLIEN_COLS.LINK_BRIEF)],
+            ideBesar: dataK[i][colIndex(KLIEN_COLS.IDE_BESAR)],
+            visualTone: dataK[i][colIndex(KLIEN_COLS.VISUAL_TONE)],
+            hook: dataK[i][colIndex(KLIEN_COLS.HOOK)],
+            catatanTeknis: dataK[i][colIndex(KLIEN_COLS.CATATAN_TEKNIS)],
+            linkMoU: dataK[i][colIndex(KLIEN_COLS.LINK_MOU)],
+            nilaiKontrak: dataK[i][colIndex(KLIEN_COLS.NILAI_KONTRAK)],
+            nomorRekening: dataK[i][colIndex(KLIEN_COLS.NOMOR_REKENING)],
+            targetProduksi: dataK[i][colIndex(KLIEN_COLS.TARGET_PRODUKSI)],
+            statusPelunasan: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
+            creativeLead: dataK[i][colIndex(KLIEN_COLS.CREATIVE_LEAD)],
+            videografer: dataK[i][colIndex(KLIEN_COLS.VIDEOGRAFER)],
+            editor: dataK[i][colIndex(KLIEN_COLS.EDITOR)],
+            namaLead: dataK[i][colIndex(KLIEN_COLS.CREATIVE_LEAD)],
+            namaVideografer: dataK[i][colIndex(KLIEN_COLS.VIDEOGRAFER)],
+            namaEditor: dataK[i][colIndex(KLIEN_COLS.EDITOR)],
+            jadwalVisit: dataK[i][colIndex(KLIEN_COLS.JADWAL_VISIT)],
+            statusProduksi: normalizeStatusProduksiValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PRODUKSI)]),
+            linkHasilFinal: normalizeFinalLinkValue(dataK[i][colIndex(KLIEN_COLS.LINK_HASIL_FINAL)])
           });
         }
       }
@@ -207,65 +277,81 @@ function handleRequest(e) {
         var values = range.getValues()[0];
 
         // Validasi input parameter sebelum update massal
-        if (params.nama !== undefined) values[1] = validateString(params.nama, "Nama", 100, false);
-        if (params.jabatan !== undefined) values[2] = validateString(params.jabatan, "Jabatan", 100, false);
-        if (params.whatsapp !== undefined) values[3] = validateWhatsApp(params.whatsapp, false);
-        if (params.mediaSosial !== undefined) values[4] = validateString(params.mediaSosial, "Media Sosial", 150, false);
-        if (params.lokasi !== undefined) values[5] = validateString(params.lokasi, "Lokasi", 150, false);
-        if (params.deskripsiUsaha !== undefined) values[6] = validateString(params.deskripsiUsaha, "Deskripsi Usaha", 3000, false);
-        if (params.momenBerkesan !== undefined) values[7] = validateString(params.momenBerkesan, "Momen Berkesan", 3000, false);
-        if (params.harapan !== undefined) values[12] = validateString(params.harapan, "Harapan", 2000, false);
+        if (params.nama !== undefined) values[colIndex(KLIEN_COLS.NAMA)] = validateString(params.nama, "Nama", 100, false);
+        if (params.jabatan !== undefined) values[colIndex(KLIEN_COLS.JABATAN)] = validateString(params.jabatan, "Jabatan", 100, false);
+        if (params.whatsapp !== undefined) values[colIndex(KLIEN_COLS.WHATSAPP)] = validateWhatsApp(params.whatsapp, false);
+        if (params.mediaSosial !== undefined) values[colIndex(KLIEN_COLS.MEDIA_SOSIAL)] = validateString(params.mediaSosial, "Media Sosial", 150, false);
+        if (params.lokasi !== undefined) values[colIndex(KLIEN_COLS.LOKASI)] = validateString(params.lokasi, "Lokasi", 150, false);
+        if (params.deskripsiUsaha !== undefined) values[colIndex(KLIEN_COLS.DESKRIPSI_USAHA)] = validateString(params.deskripsiUsaha, "Deskripsi Usaha", 3000, false);
+        if (params.momenBerkesan !== undefined) values[colIndex(KLIEN_COLS.MOMEN_BERKESAN)] = validateString(params.momenBerkesan, "Momen Berkesan", 3000, false);
+        if (params.harapan !== undefined) values[colIndex(KLIEN_COLS.HARAPAN)] = validateString(params.harapan, "Harapan", 2000, false);
+        if (params.kategori !== undefined) values[colIndex(KLIEN_COLS.KATEGORI)] = validateString(params.kategori, "Kategori", 50, false);
         
-        if (params.ideBesar !== undefined) values[16] = validateString(params.ideBesar, "Ide Besar", 300, false);
-        if (params.visualTone !== undefined) values[17] = validateString(params.visualTone, "Visual Tone", 300, false);
-        if (params.hook !== undefined) values[18] = validateString(params.hook, "Hook", 300, false);
-        if (params.catatanTeknis !== undefined) values[19] = validateString(params.catatanTeknis, "Catatan Teknis", 2000, false);
+        if (params.ideBesar !== undefined) values[colIndex(KLIEN_COLS.IDE_BESAR)] = validateString(params.ideBesar, "Ide Besar", 300, false);
+        if (params.visualTone !== undefined) values[colIndex(KLIEN_COLS.VISUAL_TONE)] = validateString(params.visualTone, "Visual Tone", 300, false);
+        if (params.hook !== undefined) values[colIndex(KLIEN_COLS.HOOK)] = validateString(params.hook, "Hook", 300, false);
+        if (params.catatanTeknis !== undefined) values[colIndex(KLIEN_COLS.CATATAN_TEKNIS)] = validateString(params.catatanTeknis, "Catatan Teknis", 2000, false);
         
         if (params.nilaiKontrak !== undefined) {
           var cleanNilai = validateString(params.nilaiKontrak, "Nilai Kontrak", 20, false).replace(/[^0-9]/g, '');
-          values[22] = cleanNilai ? parseInt(cleanNilai, 10) : "";
+          values[colIndex(KLIEN_COLS.NILAI_KONTRAK)] = cleanNilai ? parseInt(cleanNilai, 10) : "";
         }
-        if (params.nomorRekening !== undefined) values[23] = validateString(params.nomorRekening, "Nomor Rekening", 50, false);
-        if (params.targetProduksi !== undefined) values[24] = validateString(params.targetProduksi, "Target Produksi", 100, false);
+        if (params.nomorRekening !== undefined) values[colIndex(KLIEN_COLS.NOMOR_REKENING)] = validateString(params.nomorRekening, "Nomor Rekening", 50, false);
+        if (params.targetProduksi !== undefined) values[colIndex(KLIEN_COLS.TARGET_PRODUKSI)] = validateString(params.targetProduksi, "Target Produksi", 100, false);
         
         if (params.statusPelunasan !== undefined) {
-          var sp = validateString(params.statusPelunasan, "Status Pelunasan", 20, false).toLowerCase();
-          values[25] = (sp === 'lunas') ? 'Lunas' : 'Belum';
+          values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(params.statusPelunasan);
         }
         
-        if (params.namaLead !== undefined) values[26] = validateString(params.namaLead, "Nama Lead", 100, false);
-        if (params.namaVideografer !== undefined) values[27] = validateString(params.namaVideografer, "Nama Videografer", 100, false);
-        if (params.namaEditor !== undefined) values[28] = validateString(params.namaEditor, "Nama Editor", 100, false);
-        if (params.jadwalVisit !== undefined) values[29] = validateString(params.jadwalVisit, "Jadwal Visit", 100, false);
+        var creativeLeadParam = firstDefinedParam(params, ["creativeLead", "namaLead"]);
+        if (creativeLeadParam !== undefined) values[colIndex(KLIEN_COLS.CREATIVE_LEAD)] = validateString(creativeLeadParam, "Creative Lead", 100, false);
+        var videograferParam = firstDefinedParam(params, ["videografer", "namaVideografer"]);
+        if (videograferParam !== undefined) values[colIndex(KLIEN_COLS.VIDEOGRAFER)] = validateString(videograferParam, "Videografer", 100, false);
+        var editorParam = firstDefinedParam(params, ["editor", "namaEditor"]);
+        if (editorParam !== undefined) values[colIndex(KLIEN_COLS.EDITOR)] = validateString(editorParam, "Editor", 100, false);
+        if (params.jadwalVisit !== undefined) values[colIndex(KLIEN_COLS.JADWAL_VISIT)] = validateString(params.jadwalVisit, "Jadwal Visit", 100, false);
         if (params.statusProduksi !== undefined) {
-          var prodVal = validateString(params.statusProduksi, "Status Produksi", 20, false);
-          // Standardisasi status
-          if (prodVal === "Selesai" || prodVal === "Tunda" || prodVal === "Proses") {
-            values[30] = prodVal;
-          } else {
-            values[30] = "Proses";
-          }
+          values[colIndex(KLIEN_COLS.STATUS_PRODUKSI)] = normalizeStatusProduksiValue(params.statusProduksi);
         }
-        if (params.linkHasilFinal !== undefined) values[31] = validateString(params.linkHasilFinal, "Link Hasil Final", 500, false);
+        if (params.linkHasilFinal !== undefined) {
+          if (isPaymentStatusValue(params.linkHasilFinal) && !values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)]) {
+            values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(params.linkHasilFinal);
+          }
+          values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = normalizeFinalLinkValue(validateString(params.linkHasilFinal, "Link Hasil Final", 500, false));
+        }
 
-        var briefUrl = values[15];
-        var mouUrl = values[21];
+        var briefUrl = values[colIndex(KLIEN_COLS.LINK_BRIEF)];
+        var mouUrl = values[colIndex(KLIEN_COLS.LINK_MOU)];
         var shouldRegenerateDocs = String(params.regenerateDocs || "").toLowerCase() === "true";
         if (shouldRegenerateDocs) {
           // Generate dokumen hanya saat diminta eksplisit agar update produksi tidak timeout.
           var dataObj = {
-            idBaris: baris, nama: values[1], jabatan: values[2], whatsapp: values[3], medsos: values[4],
-            lokasi: values[5], usaha: values[6], titikBalik: values[7], harapan: values[12],
-            ideBesar: values[16], visualTone: values[17], hook: values[18], catatan: values[19],
-            rekening: values[23], target: values[24], lead: values[26], video: values[27], editor: values[28],
-            visit: values[29]
+            idBaris: baris,
+            nama: values[colIndex(KLIEN_COLS.NAMA)],
+            jabatan: values[colIndex(KLIEN_COLS.JABATAN)],
+            whatsapp: values[colIndex(KLIEN_COLS.WHATSAPP)],
+            medsos: values[colIndex(KLIEN_COLS.MEDIA_SOSIAL)],
+            lokasi: values[colIndex(KLIEN_COLS.LOKASI)],
+            usaha: values[colIndex(KLIEN_COLS.DESKRIPSI_USAHA)],
+            titikBalik: values[colIndex(KLIEN_COLS.MOMEN_BERKESAN)],
+            harapan: values[colIndex(KLIEN_COLS.HARAPAN)],
+            ideBesar: values[colIndex(KLIEN_COLS.IDE_BESAR)],
+            visualTone: values[colIndex(KLIEN_COLS.VISUAL_TONE)],
+            hook: values[colIndex(KLIEN_COLS.HOOK)],
+            catatan: values[colIndex(KLIEN_COLS.CATATAN_TEKNIS)],
+            rekening: values[colIndex(KLIEN_COLS.NOMOR_REKENING)],
+            target: values[colIndex(KLIEN_COLS.TARGET_PRODUKSI)],
+            lead: values[colIndex(KLIEN_COLS.CREATIVE_LEAD)],
+            video: values[colIndex(KLIEN_COLS.VIDEOGRAFER)],
+            editor: values[colIndex(KLIEN_COLS.EDITOR)],
+            visit: values[colIndex(KLIEN_COLS.JADWAL_VISIT)]
           };
 
           briefUrl = generateDocument(BRIEF_TEMPLATE_ID, "BRIEF - " + dataObj.nama, dataObj);
           mouUrl = generateDocument(MOU_TEMPLATE_ID, "MoU - " + dataObj.nama, dataObj);
           
-          if (briefUrl) values[15] = briefUrl;
-          if (mouUrl) values[21] = mouUrl;
+          if (briefUrl) values[colIndex(KLIEN_COLS.LINK_BRIEF)] = briefUrl;
+          if (mouUrl) values[colIndex(KLIEN_COLS.LINK_MOU)] = mouUrl;
         }
 
         // Tulis semua update ke sheet klien secara sekaligus
@@ -425,4 +511,39 @@ function generateDocument(templateId, fileName, data) {
     console.error("Document Generation Failed: " + e.toString());
     return null;
   }
+}
+
+function cleanupMekarhubProduksiMapping() {
+  var ssKlien = SpreadsheetApp.openById(SS_KLIEN_ID);
+  var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
+  var lastRow = sheetKlien.getLastRow();
+  if (lastRow <= 1) return { updated: 0 };
+
+  var numRows = lastRow - 1;
+  var statusRange = sheetKlien.getRange(2, KLIEN_COLS.STATUS_PELUNASAN, numRows, 1);
+  var linkRange = sheetKlien.getRange(2, KLIEN_COLS.LINK_HASIL_FINAL, numRows, 1);
+  var statusValues = statusRange.getValues();
+  var linkValues = linkRange.getValues();
+  var updated = 0;
+
+  for (var i = 0; i < numRows; i++) {
+    var linkValue = linkValues[i][0];
+    if (!isPaymentStatusValue(linkValue)) continue;
+
+    var currentStatus = String(statusValues[i][0] || "").trim();
+    if (!currentStatus) {
+      statusValues[i][0] = normalizeStatusPelunasanValue(linkValue);
+    }
+
+    linkValues[i][0] = "";
+    updated++;
+  }
+
+  if (updated > 0) {
+    statusRange.setValues(statusValues);
+    linkRange.setValues(linkValues);
+    try { CacheService.getScriptCache().remove("klien_data"); } catch (cacheErr) {}
+  }
+
+  return { updated: updated };
 }
