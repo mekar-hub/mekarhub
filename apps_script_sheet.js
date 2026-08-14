@@ -19,6 +19,7 @@
  * - Error handling yang mengembalikan format balasan JSON dengan pesan kesalahan yang spesifik.
  */
 
+var APP_VERSION = "mekarhub-v6.4-debug-2026-08-14-1505";
 var SS_KLIEN_ID = "1dGrwqokk3jXgpZChfvRQhA8Ht75L_XdqWOdxNN2w92Q";
 var SS_FIGUR_ID = "18iGYoxGPp6A0CuAtw0L8qMj9Tth4XzBglA-sU4WkyxE";
 var FOLDER_ID = "1D4fLm-jDvpIUjtZAIZ7CVrPrUlSRzaGd";
@@ -157,6 +158,113 @@ function handleRequest(e) {
     var sheetKlien = ssKlien.getSheetByName("Sheet1") || ssKlien.getSheets()[0];
     
     // --- READ OPERATIONS (TIDAK BUTUH LOCK) ---
+
+    if (action === "debugVersion") {
+      return createJsonResponse({
+        result: "success",
+        version: APP_VERSION,
+        spreadsheetId: SS_KLIEN_ID,
+        sheetName: sheetKlien.getName(),
+        lastRow: sheetKlien.getLastRow(),
+        now: new Date().toISOString()
+      });
+    }
+
+    if (action === "testWriteKlien") {
+      var testRow = validateRowId(params.idBaris || 10, sheetKlien.getLastRow(), "Test Write Klien");
+      sheetKlien.getRange(testRow, KLIEN_COLS.STATUS_PELUNASAN).setValue("Tidak Berbayar");
+      sheetKlien.getRange(testRow, KLIEN_COLS.LINK_HASIL_FINAL).setValue("https://contoh.com/hasil-final");
+      CacheService.getScriptCache().remove("klien_data");
+
+      return createJsonResponse({
+        result: "success",
+        version: APP_VERSION,
+        idBaris: testRow,
+        written: {
+          statusPelunasan: "Tidak Berbayar",
+          linkHasilFinal: "https://contoh.com/hasil-final"
+        }
+      });
+    }
+
+    if (action === "debugUpdateKlien") {
+      var debugRow = validateRowId(params.idBaris || 10, sheetKlien.getLastRow(), "Debug Update Klien");
+      var debugRange = sheetKlien.getRange(debugRow, 1, 1, 32);
+      var beforeValues = debugRange.getValues()[0];
+      var debugValues = beforeValues.slice();
+
+      var debugStatusParams = {
+        statusPelunasan: params.statusPelunasan !== undefined ? params.statusPelunasan : "Tidak Berbayar",
+        statusBayar: params.statusBayar !== undefined ? params.statusBayar : "Tidak Berbayar",
+        paymentStatus: params.paymentStatus
+      };
+      var debugLinkParams = {
+        linkHasilFinal: params.linkHasilFinal !== undefined ? params.linkHasilFinal : "https://contoh.com/hasil-final",
+        finalLink: params.finalLink,
+        hasilFinal: params.hasilFinal
+      };
+
+      var debugStatusPelunasanParam = firstDefinedParam(debugStatusParams, [
+        "statusPelunasan",
+        "statusBayar",
+        "paymentStatus"
+      ]);
+
+      if (debugStatusPelunasanParam !== undefined) {
+        debugValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(debugStatusPelunasanParam);
+      }
+
+      var debugLinkHasilFinalParam = firstDefinedParam(debugLinkParams, [
+        "linkHasilFinal",
+        "finalLink",
+        "hasilFinal"
+      ]);
+
+      if (debugLinkHasilFinalParam !== undefined) {
+        if (isPaymentStatusValue(debugLinkHasilFinalParam) && !debugValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)]) {
+          debugValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(debugLinkHasilFinalParam);
+        }
+        debugValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = normalizeFinalLinkValue(
+          validateString(debugLinkHasilFinalParam, "Link Hasil Final", 500, false)
+        );
+      }
+
+      var debugCurrentAF = debugValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)];
+      var debugCurrentZ = debugValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)];
+
+      if (isPaymentStatusValue(debugCurrentAF)) {
+        if (!String(debugCurrentZ || "").trim()) {
+          debugValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(debugCurrentAF);
+        }
+        debugValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = "";
+      } else if (isProductionStatusValue(debugCurrentAF)) {
+        debugValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = "";
+      }
+
+      debugRange.setValues([debugValues]);
+      CacheService.getScriptCache().remove("klien_data");
+
+      var afterValues = debugRange.getValues()[0];
+
+      return createJsonResponse({
+        result: "success",
+        version: APP_VERSION,
+        idBaris: debugRow,
+        beforeZ: beforeValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)],
+        beforeAF: beforeValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)],
+        afterZ: afterValues[colIndex(KLIEN_COLS.STATUS_PELUNASAN)],
+        afterAF: afterValues[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)],
+        received: {
+          idBaris: params.idBaris,
+          statusPelunasan: debugStatusParams.statusPelunasan,
+          statusBayar: debugStatusParams.statusBayar,
+          paymentStatus: debugStatusParams.paymentStatus,
+          linkHasilFinal: debugLinkParams.linkHasilFinal,
+          finalLink: debugLinkParams.finalLink,
+          hasilFinal: debugLinkParams.hasilFinal
+        }
+      });
+    }
     
     if (action === "getKlien") {
       var shouldBypassCache =

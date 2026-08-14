@@ -184,12 +184,7 @@ const isSheetStatusValue = (value: unknown): boolean => {
 };
 
 const getPaymentStatus = (client: Pick<KlienData, "statusPelunasan" | "statusBayar" | "paymentStatus">) => {
-  return normalizeStatusPelunasan(
-    client.statusPelunasan ||
-    client.statusBayar ||
-    client.paymentStatus ||
-    "Belum"
-  );
+  return client.statusPelunasan || client.statusBayar || client.paymentStatus || "Belum";
 };
 
 const normalizeTargetRangeForInput = (value: unknown): [string, string] => {
@@ -321,8 +316,8 @@ const AdminDashboard = () => {
     try {
       const klienParams = new URLSearchParams();
       klienParams.append("action", "getKlien");
+      klienParams.append("noCache", "true");
       klienParams.append("_ts", Date.now().toString());
-      if (options.noCache) klienParams.append("noCache", "true");
 
       const [kRes, fRes] = await Promise.all([
         fetch(`${GAS_ENDPOINT}?${klienParams.toString()}`),
@@ -331,6 +326,7 @@ const AdminDashboard = () => {
       const kData = await kRes.json();
       const fData = await fRes.json();
       if (!kData.data || !fData.data) throw new Error("Data tidak lengkap");
+      console.log("FETCHED KLIEN UPDATED", kData.data.find((k: KlienData) => k.nama?.includes("Umblux")));
       setKlienList(kData.data || []);
       setFigurList(fData.data || []);
     } catch (e: any) {
@@ -1053,7 +1049,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
                       <option value="Tunda">🔴 TUNDA</option>
                     </select>
                   </div>
-                  <Inp label="Link Hasil Final" value={form.linkHasilFinal} onChange={(v: string) => setForm({...form, linkHasilFinal: v})} />
+                  <Inp label="Link Hasil Final" value={form.linkHasilFinal || ""} onChange={(v: string) => setForm({...form, linkHasilFinal: v})} />
                 </div>
               </div>
               <div className="space-y-8">
