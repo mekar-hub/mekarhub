@@ -284,6 +284,8 @@ function handleRequest(e) {
       var resK = [];
       for (var i = 1; i < dataK.length; i++) {
         if (dataK[i][1]) {
+          var rawStatusPelunasan = dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)];
+          var rawLinkHasilFinal = dataK[i][colIndex(KLIEN_COLS.LINK_HASIL_FINAL)];
           resK.push({
             idBaris: i + 1,
             nama: dataK[i][colIndex(KLIEN_COLS.NAMA)],
@@ -304,9 +306,9 @@ function handleRequest(e) {
             nilaiKontrak: dataK[i][colIndex(KLIEN_COLS.NILAI_KONTRAK)],
             nomorRekening: dataK[i][colIndex(KLIEN_COLS.NOMOR_REKENING)],
             targetProduksi: dataK[i][colIndex(KLIEN_COLS.TARGET_PRODUKSI)],
-            statusPelunasan: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
-            statusBayar: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
-            paymentStatus: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
+            statusPelunasan: normalizeStatusPelunasanValue(rawStatusPelunasan),
+            statusBayar: normalizeStatusPelunasanValue(rawStatusPelunasan),
+            paymentStatus: normalizeStatusPelunasanValue(rawStatusPelunasan),
             creativeLead: dataK[i][colIndex(KLIEN_COLS.CREATIVE_LEAD)],
             videografer: dataK[i][colIndex(KLIEN_COLS.VIDEOGRAFER)],
             editor: dataK[i][colIndex(KLIEN_COLS.EDITOR)],
@@ -315,7 +317,9 @@ function handleRequest(e) {
             namaEditor: dataK[i][colIndex(KLIEN_COLS.EDITOR)],
             jadwalVisit: dataK[i][colIndex(KLIEN_COLS.JADWAL_VISIT)],
             statusProduksi: normalizeStatusProduksiValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PRODUKSI)]),
-            linkHasilFinal: normalizeFinalLinkValue(dataK[i][colIndex(KLIEN_COLS.LINK_HASIL_FINAL)])
+            linkHasilFinal: normalizeFinalLinkValue(rawLinkHasilFinal),
+            debugZ: rawStatusPelunasan,
+            debugAF: rawLinkHasilFinal
           });
         }
       }
