@@ -183,6 +183,15 @@ const isSheetStatusValue = (value: unknown): boolean => {
   return ["lunas", "belum", "sudah lunas", "belum lunas", "paid", "unpaid", "sudah bayar", "belum bayar", "tidak berbayar", "non paid", "non-paid", "gratis", "free", "barter", "kolaborasi", "collab", "proses", "selesai", "tunda"].includes(raw);
 };
 
+const getPaymentStatus = (client: Pick<KlienData, "statusPelunasan" | "statusBayar" | "paymentStatus">) => {
+  return normalizeStatusPelunasan(
+    client.statusPelunasan ||
+    client.statusBayar ||
+    client.paymentStatus ||
+    "Belum"
+  );
+};
+
 const normalizeTargetRangeForInput = (value: unknown): [string, string] => {
   const raw = String(value || "").trim();
   if (!raw) return ["", ""];
@@ -307,11 +316,16 @@ const AdminDashboard = () => {
     window.open(url, "_blank");
   };
 
-  const fetchData = async () => {
+  const fetchData = async (options: { noCache?: boolean } = {}) => {
     setLoading(true);
     try {
+      const klienParams = new URLSearchParams();
+      klienParams.append("action", "getKlien");
+      klienParams.append("_ts", Date.now().toString());
+      if (options.noCache) klienParams.append("noCache", "true");
+
       const [kRes, fRes] = await Promise.all([
-        fetch(`${GAS_ENDPOINT}?action=getKlien&t=${Date.now()}`),
+        fetch(`${GAS_ENDPOINT}?${klienParams.toString()}`),
         fetch(`${GAS_ENDPOINT}?action=getFigur&t=${Date.now()}`)
       ]);
       const kData = await kRes.json();
@@ -325,6 +339,39 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleKlienSaved = async (payload?: Partial<KlienData>) => {
+    if (payload?.idBaris !== undefined) {
+      const paymentStatus = getPaymentStatus({
+        statusPelunasan: payload.statusPelunasan || "",
+        statusBayar: payload.statusBayar,
+        paymentStatus: payload.paymentStatus,
+      });
+      const updatedPayload = {
+        ...payload,
+        statusPelunasan: paymentStatus,
+        statusBayar: paymentStatus,
+        paymentStatus: paymentStatus,
+        linkHasilFinal: payload.linkHasilFinal || "",
+      };
+
+      setKlienList((prev) =>
+        prev.map((client) =>
+          String(client.idBaris) === String(payload.idBaris)
+            ? { ...client, ...updatedPayload }
+            : client
+        )
+      );
+
+      setEditingKlien((prev) =>
+        prev && String(prev.idBaris) === String(payload.idBaris)
+          ? { ...prev, ...updatedPayload }
+          : prev
+      );
+    }
+
+    await fetchData({ noCache: true });
   };
 
   const handleWA = (whatsapp: any, name: string) => {
@@ -511,7 +558,7 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {editingKlien && <EditKlienModal klien={editingKlien} onClose={handleCloseKlienModal} onSave={fetchData} />}
+      {editingKlien && <EditKlienModal klien={editingKlien} onClose={handleCloseKlienModal} onSave={handleKlienSaved} />}
       {editingFigur && <EditFigurModal figur={editingFigur} onClose={() => setEditingFigur(null)} onSave={fetchData} />}
       
       {/* DELETE CONFIRMATION MODAL */}
@@ -617,9 +664,7 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
           {data.length === 0 ? (
             <tr><td colSpan={4} className="px-8 py-20 text-center text-gray-400 italic">Tidak ada klien ditemukan.</td></tr>
           ) : data.map((k: KlienData) => {
-            const paymentStatus = normalizeStatusPelunasan(
-              k.statusPelunasan || k.statusBayar || k.paymentStatus || "Belum"
-            );
+            const paymentStatus = getPaymentStatus(k);
 
             return (
             <tr key={k.idBaris} className="hover:bg-gray-50/30 transition-all group">
@@ -853,13 +898,47 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       const bodyParams = new URLSearchParams();
       bodyParams.append("action", "updateKlien");
       bodyParams.append("idBaris", klien.idBaris.toString());
+      const updatedPayload: Partial<KlienData> = {
+        idBaris: klien.idBaris,
+        nama: form.nama,
+        jabatan: form.jabatan,
+        whatsapp: form.whatsapp,
+        mediaSosial: form.mediaSosial,
+        lokasi: form.lokasi,
+        deskripsiUsaha: form.deskripsiUsaha,
+        momenBerkesan: form.momenBerkesan,
+        harapan: form.harapan,
+        kategori: form.kategori,
+        ideBesar: form.ideBesar,
+        visualTone: form.visualTone,
+        hook: form.hook,
+        catatanTeknis: form.catatanTeknis,
+        nilaiKontrak: form.nilaiKontrak,
+        nomorRekening: form.nomorRekening,
+        targetProduksi: klien.targetProduksi || "",
+        statusPelunasan: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        statusBayar: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        paymentStatus: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        creativeLead: form.creativeLead,
+        videografer: form.videografer,
+        editor: form.editor,
+        jadwalVisit: form.jadwalVisit,
+        statusProduksi: normalizeStatusProduksi(form.statusProduksi),
+        linkHasilFinal: isSheetStatusValue(form.linkHasilFinal) ? "" : String(form.linkHasilFinal || "").trim(),
+      };
 
       if (activeTab === 'produksi') {
         const targetRange = form.targetProduksiStart && form.targetProduksiEnd
           ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
           : form.targetProduksiStart || form.targetProduksiEnd || "";
         const paymentStatus = normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || "Belum");
-        const finalLink = isSheetStatusValue(form.linkHasilFinal) ? "" : String(form.linkHasilFinal || "").trim();
+        const finalLink = updatedPayload.linkHasilFinal || "";
+
+        updatedPayload.targetProduksi = targetRange;
+        updatedPayload.statusPelunasan = paymentStatus;
+        updatedPayload.statusBayar = paymentStatus;
+        updatedPayload.paymentStatus = paymentStatus;
+        updatedPayload.linkHasilFinal = finalLink;
 
         bodyParams.append("nilaiKontrak", String(form.nilaiKontrak || ""));
         bodyParams.append("nomorRekening", String(form.nomorRekening || ""));
@@ -917,7 +996,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
 
       setLoading(false);
       toast({ title: "Berhasil", description: "Data berhasil diperbarui" });
-      onSave(); 
+      await onSave(updatedPayload);
       onClose();
     } catch (error: any) {
       console.error("Update Error:", error);

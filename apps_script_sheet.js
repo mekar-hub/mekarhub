@@ -159,9 +159,17 @@ function handleRequest(e) {
     // --- READ OPERATIONS (TIDAK BUTUH LOCK) ---
     
     if (action === "getKlien") {
-      var cachedKlien = cache.get("klien_data");
-      if (cachedKlien) {
-        return ContentService.createTextOutput(cachedKlien).setMimeType(ContentService.MimeType.JSON);
+      var shouldBypassCache =
+        String(params.noCache || "").toLowerCase() === "true" ||
+        String(params.refresh || "").toLowerCase() === "true" ||
+        params.cacheBust !== undefined ||
+        params._ts !== undefined;
+
+      if (!shouldBypassCache) {
+        var cachedKlien = cache.get("klien_data");
+        if (cachedKlien) {
+          return ContentService.createTextOutput(cachedKlien).setMimeType(ContentService.MimeType.JSON);
+        }
       }
       
       var dataK = sheetKlien.getDataRange().getValues();
