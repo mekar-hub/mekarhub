@@ -166,10 +166,38 @@ const normalizeDateForInput = (value: unknown): string => {
 };
 
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
-const normalizeStatusPelunasan = (value: unknown): "Lunas" | "Belum" | "Tidak Berbayar" => {
+const normalizePaymentStatus = (value?: string | null): "Lunas" | "Belum" | "Tidak Berbayar" => {
   const raw = String(value || "").trim().toLowerCase();
-  if (raw === "lunas" || raw === "sudah lunas" || raw === "paid" || raw === "sudah bayar") return "Lunas";
-  if (raw === "tidak berbayar" || raw === "non paid" || raw === "non-paid" || raw === "gratis" || raw === "free" || raw === "barter" || raw === "kolaborasi" || raw === "collab") return "Tidak Berbayar";
+
+  if (!raw) return "Belum";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return "Belum";
+  }
+
+  if (["lunas", "sudah lunas", "paid", "sudah bayar"].includes(raw)) {
+    return "Lunas";
+  }
+
+  if (
+    [
+      "tidak berbayar",
+      "non paid",
+      "non-paid",
+      "gratis",
+      "free",
+      "barter",
+      "kolaborasi",
+      "collab",
+    ].includes(raw)
+  ) {
+    return "Tidak Berbayar";
+  }
+
+  if (["belum", "belum lunas", "unpaid", "belum bayar"].includes(raw)) {
+    return "Belum";
+  }
+
   return "Belum";
 };
 
@@ -183,8 +211,10 @@ const isSheetStatusValue = (value: unknown): boolean => {
   return ["lunas", "belum", "sudah lunas", "belum lunas", "paid", "unpaid", "sudah bayar", "belum bayar", "tidak berbayar", "non paid", "non-paid", "gratis", "free", "barter", "kolaborasi", "collab", "proses", "selesai", "tunda"].includes(raw);
 };
 
-const getPaymentStatus = (client: Pick<KlienData, "statusPelunasan" | "statusBayar" | "paymentStatus">) => {
-  return client.statusPelunasan || client.statusBayar || client.paymentStatus || "Belum";
+const getPaymentStatus = (client: any) => {
+  return normalizePaymentStatus(
+    client.statusPelunasan || client.statusBayar || client.paymentStatus
+  );
 };
 
 const normalizeTargetRangeForInput = (value: unknown): [string, string] => {
@@ -326,8 +356,31 @@ const AdminDashboard = () => {
       const kData = await kRes.json();
       const fData = await fRes.json();
       if (!kData.data || !fData.data) throw new Error("Data tidak lengkap");
-      console.log("FETCHED KLIEN UPDATED", kData.data.find((k: KlienData) => k.nama?.includes("Umblux")));
-      setKlienList(kData.data || []);
+      const normalizedKlien = (kData.data || []).map((raw: KlienData) => {
+        const paymentStatus = normalizePaymentStatus(raw.statusPelunasan || raw.statusBayar || raw.paymentStatus);
+        const client = {
+          ...raw,
+          statusPelunasan: paymentStatus,
+          statusBayar: paymentStatus,
+          paymentStatus: paymentStatus,
+          linkHasilFinal: raw.linkHasilFinal || "",
+        };
+
+        if (client.nama?.includes("Umblux")) {
+          console.log("UMBLUX PAYMENT DEBUG", {
+            nama: client.nama,
+            statusPelunasan: client.statusPelunasan,
+            statusBayar: client.statusBayar,
+            paymentStatus: client.paymentStatus,
+            linkHasilFinal: client.linkHasilFinal,
+            renderedPayment: getPaymentStatus(client),
+          });
+        }
+
+        return client;
+      });
+      console.log("FETCHED KLIEN UPDATED", normalizedKlien.find((k: KlienData) => k.nama?.includes("Umblux")));
+      setKlienList(normalizedKlien);
       setFigurList(fData.data || []);
     } catch (e: any) {
       console.error("Fetch Error:", e);
@@ -339,16 +392,14 @@ const AdminDashboard = () => {
 
   const handleKlienSaved = async (payload?: Partial<KlienData>) => {
     if (payload?.idBaris !== undefined) {
-      const paymentStatus = getPaymentStatus({
-        statusPelunasan: payload.statusPelunasan || "",
-        statusBayar: payload.statusBayar,
-        paymentStatus: payload.paymentStatus,
-      });
+      const nextPaymentStatus = normalizePaymentStatus(
+        payload.statusPelunasan || payload.statusBayar || payload.paymentStatus
+      );
       const updatedPayload = {
         ...payload,
-        statusPelunasan: paymentStatus,
-        statusBayar: paymentStatus,
-        paymentStatus: paymentStatus,
+        statusPelunasan: nextPaymentStatus,
+        statusBayar: nextPaymentStatus,
+        paymentStatus: nextPaymentStatus,
         linkHasilFinal: payload.linkHasilFinal || "",
       };
 
@@ -661,6 +712,16 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
             <tr><td colSpan={4} className="px-8 py-20 text-center text-gray-400 italic">Tidak ada klien ditemukan.</td></tr>
           ) : data.map((k: KlienData) => {
             const paymentStatus = getPaymentStatus(k);
+            if (k.nama?.includes("Umblux")) {
+              console.log("UMBLUX PAYMENT DEBUG", {
+                nama: k.nama,
+                statusPelunasan: k.statusPelunasan,
+                statusBayar: k.statusBayar,
+                paymentStatus: k.paymentStatus,
+                linkHasilFinal: k.linkHasilFinal,
+                renderedPayment: getPaymentStatus(k),
+              });
+            }
 
             return (
             <tr key={k.idBaris} className="hover:bg-gray-50/30 transition-all group">
@@ -853,8 +914,8 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       catatanTeknis: klien.catatanTeknis || "",
       nilaiKontrak: klien.nilaiKontrak || "",
       nomorRekening: klien.nomorRekening || klien.savedRekening || "",
-      statusPelunasan: normalizeStatusPelunasan(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
-      statusBayar: normalizeStatusPelunasan(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+      statusPelunasan: normalizePaymentStatus(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+      statusBayar: normalizePaymentStatus(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
       targetProduksiStart: start || "",
       targetProduksiEnd: end || "",
       jadwalVisit: normalizeDateForInput(klien.jadwalVisit),
@@ -912,9 +973,9 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
         nilaiKontrak: form.nilaiKontrak,
         nomorRekening: form.nomorRekening,
         targetProduksi: klien.targetProduksi || "",
-        statusPelunasan: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
-        statusBayar: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
-        paymentStatus: normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        statusPelunasan: normalizePaymentStatus(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        statusBayar: normalizePaymentStatus(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+        paymentStatus: normalizePaymentStatus(form.statusPelunasan || form.statusBayar || klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
         creativeLead: form.creativeLead,
         videografer: form.videografer,
         editor: form.editor,
@@ -927,7 +988,7 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
         const targetRange = form.targetProduksiStart && form.targetProduksiEnd
           ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
           : form.targetProduksiStart || form.targetProduksiEnd || "";
-        const paymentStatus = normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || "Belum");
+        const paymentStatus = normalizePaymentStatus(form.statusPelunasan || form.statusBayar || "Belum");
         const finalLink = updatedPayload.linkHasilFinal || "";
 
         updatedPayload.targetProduksi = targetRange;
