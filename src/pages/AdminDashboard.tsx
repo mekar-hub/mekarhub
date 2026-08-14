@@ -55,6 +55,8 @@ interface KlienData {
   nomorRekening: string;
   targetProduksi: string;
   statusPelunasan: string;
+  statusBayar?: string;
+  paymentStatus?: string;
   creativeLead: string;
   videografer: string;
   editor: string;
@@ -87,6 +89,7 @@ interface AdminForm {
   nilaiKontrak: string;
   nomorRekening: string;
   statusPelunasan: string;
+  statusBayar?: string;
   targetProduksiStart: string;
   targetProduksiEnd: string;
   jadwalVisit: string;
@@ -613,7 +616,12 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
         <tbody className="divide-y divide-gray-50">
           {data.length === 0 ? (
             <tr><td colSpan={4} className="px-8 py-20 text-center text-gray-400 italic">Tidak ada klien ditemukan.</td></tr>
-          ) : data.map((k: KlienData) => (
+          ) : data.map((k: KlienData) => {
+            const paymentStatus = normalizeStatusPelunasan(
+              k.statusPelunasan || k.statusBayar || k.paymentStatus || "Belum"
+            );
+
+            return (
             <tr key={k.idBaris} className="hover:bg-gray-50/30 transition-all group">
               <td className="px-8 py-6">
                 <p className="font-bold text-gray-800">{k.nama}</p>
@@ -625,8 +633,8 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
                 </span>
               </td>
               <td className="px-8 py-6">
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${k.statusPelunasan === "Lunas" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
-                  {k.statusPelunasan || "Belum"}
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${paymentStatus === "Lunas" ? "bg-green-50 text-green-600" : paymentStatus === "Tidak Berbayar" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
+                  {paymentStatus}
                 </span>
               </td>
               <td className="px-8 py-6">
@@ -640,7 +648,8 @@ const KlienView = ({ data, onEdit, onPromote, onPreview, onDelete, onWA }: any) 
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -803,7 +812,8 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
       catatanTeknis: klien.catatanTeknis || "",
       nilaiKontrak: klien.nilaiKontrak || "",
       nomorRekening: klien.nomorRekening || klien.savedRekening || "",
-      statusPelunasan: normalizeStatusPelunasan(klien.statusPelunasan),
+      statusPelunasan: normalizeStatusPelunasan(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
+      statusBayar: normalizeStatusPelunasan(klien.statusPelunasan || klien.statusBayar || klien.paymentStatus),
       targetProduksiStart: start || "",
       targetProduksiEnd: end || "",
       jadwalVisit: normalizeDateForInput(klien.jadwalVisit),
@@ -848,12 +858,14 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
         const targetRange = form.targetProduksiStart && form.targetProduksiEnd
           ? `${form.targetProduksiStart} - ${form.targetProduksiEnd}`
           : form.targetProduksiStart || form.targetProduksiEnd || "";
+        const paymentStatus = normalizeStatusPelunasan(form.statusPelunasan || form.statusBayar || "Belum");
         const finalLink = isSheetStatusValue(form.linkHasilFinal) ? "" : String(form.linkHasilFinal || "").trim();
 
         bodyParams.append("nilaiKontrak", String(form.nilaiKontrak || ""));
         bodyParams.append("nomorRekening", String(form.nomorRekening || ""));
         bodyParams.append("targetProduksi", targetRange);
-        bodyParams.append("statusPelunasan", normalizeStatusPelunasan(form.statusPelunasan));
+        bodyParams.append("statusPelunasan", paymentStatus);
+        bodyParams.append("statusBayar", paymentStatus);
         bodyParams.append("creativeLead", String(form.creativeLead || ""));
         bodyParams.append("videografer", String(form.videografer || ""));
         bodyParams.append("editor", String(form.editor || ""));

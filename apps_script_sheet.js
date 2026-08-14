@@ -189,6 +189,8 @@ function handleRequest(e) {
             nomorRekening: dataK[i][colIndex(KLIEN_COLS.NOMOR_REKENING)],
             targetProduksi: dataK[i][colIndex(KLIEN_COLS.TARGET_PRODUKSI)],
             statusPelunasan: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
+            statusBayar: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
+            paymentStatus: normalizeStatusPelunasanValue(dataK[i][colIndex(KLIEN_COLS.STATUS_PELUNASAN)]),
             creativeLead: dataK[i][colIndex(KLIEN_COLS.CREATIVE_LEAD)],
             videografer: dataK[i][colIndex(KLIEN_COLS.VIDEOGRAFER)],
             editor: dataK[i][colIndex(KLIEN_COLS.EDITOR)],
@@ -302,8 +304,14 @@ function handleRequest(e) {
         if (params.nomorRekening !== undefined) values[colIndex(KLIEN_COLS.NOMOR_REKENING)] = validateString(params.nomorRekening, "Nomor Rekening", 50, false);
         if (params.targetProduksi !== undefined) values[colIndex(KLIEN_COLS.TARGET_PRODUKSI)] = validateString(params.targetProduksi, "Target Produksi", 100, false);
         
-        if (params.statusPelunasan !== undefined) {
-          values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(params.statusPelunasan);
+        var statusPelunasanParam = firstDefinedParam(params, [
+          "statusPelunasan",
+          "statusBayar",
+          "paymentStatus"
+        ]);
+
+        if (statusPelunasanParam !== undefined) {
+          values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(statusPelunasanParam);
         }
         
         var creativeLeadParam = firstDefinedParam(params, ["creativeLead", "namaLead"]);
@@ -316,11 +324,19 @@ function handleRequest(e) {
         if (params.statusProduksi !== undefined) {
           values[colIndex(KLIEN_COLS.STATUS_PRODUKSI)] = normalizeStatusProduksiValue(params.statusProduksi);
         }
-        if (params.linkHasilFinal !== undefined) {
-          if (isPaymentStatusValue(params.linkHasilFinal) && !values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)]) {
-            values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(params.linkHasilFinal);
+        var linkHasilFinalParam = firstDefinedParam(params, [
+          "linkHasilFinal",
+          "finalLink",
+          "hasilFinal"
+        ]);
+
+        if (linkHasilFinalParam !== undefined) {
+          if (isPaymentStatusValue(linkHasilFinalParam) && !values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)]) {
+            values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(linkHasilFinalParam);
           }
-          values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = normalizeFinalLinkValue(validateString(params.linkHasilFinal, "Link Hasil Final", 500, false));
+          values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = normalizeFinalLinkValue(
+            validateString(linkHasilFinalParam, "Link Hasil Final", 500, false)
+          );
         }
 
         var briefUrl = values[colIndex(KLIEN_COLS.LINK_BRIEF)];
