@@ -163,9 +163,10 @@ const normalizeDateForInput = (value: unknown): string => {
 };
 
 // ─── Helper: Slugify ─────────────────────────────────────────────────────────
-const normalizeStatusPelunasan = (value: unknown): "Lunas" | "Belum" => {
+const normalizeStatusPelunasan = (value: unknown): "Lunas" | "Belum" | "Tidak Berbayar" => {
   const raw = String(value || "").trim().toLowerCase();
-  if (raw === "lunas" || raw === "sudah lunas") return "Lunas";
+  if (raw === "lunas" || raw === "sudah lunas" || raw === "paid" || raw === "sudah bayar") return "Lunas";
+  if (raw === "tidak berbayar" || raw === "non paid" || raw === "non-paid" || raw === "gratis" || raw === "free" || raw === "barter" || raw === "kolaborasi" || raw === "collab") return "Tidak Berbayar";
   return "Belum";
 };
 
@@ -176,7 +177,7 @@ const normalizeStatusProduksi = (value: unknown): "Proses" | "Tunda" | "Selesai"
 
 const isSheetStatusValue = (value: unknown): boolean => {
   const raw = String(value || "").trim().toLowerCase();
-  return ["lunas", "belum", "sudah lunas", "belum lunas", "proses", "selesai", "tunda"].includes(raw);
+  return ["lunas", "belum", "sudah lunas", "belum lunas", "paid", "unpaid", "sudah bayar", "belum bayar", "tidak berbayar", "non paid", "non-paid", "gratis", "free", "barter", "kolaborasi", "collab", "proses", "selesai", "tunda"].includes(raw);
 };
 
 const normalizeTargetRangeForInput = (value: unknown): [string, string] => {
@@ -987,8 +988,9 @@ const EditKlienModal = ({ klien, onClose, onSave }: any) => {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-gray-400">Status Bayar</Label>
                     <select value={form.statusPelunasan} onChange={e => setForm({...form, statusPelunasan: e.target.value})} className="w-full p-4 rounded-xl border border-gray-100 text-xs font-bold">
-                      <option value="Belum">🔴 BELUM LUNAS</option>
-                      <option value="Lunas">🟢 SUDAH LUNAS</option>
+                      <option value="Belum">Belum</option>
+                      <option value="Lunas">Lunas</option>
+                      <option value="Tidak Berbayar">Tidak Berbayar</option>
                     </select>
                   </div>
                   <Inp label="Nomor Rekening" value={form.nomorRekening} onChange={(v: string) => setForm({...form, nomorRekening: v})} />

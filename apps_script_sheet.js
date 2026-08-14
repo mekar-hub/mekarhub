@@ -102,7 +102,10 @@ function firstDefinedParam(params, keys) {
 
 function normalizeStatusPelunasanValue(value) {
   var raw = String(value || "").trim().toLowerCase();
-  if (raw === "lunas" || raw === "sudah lunas") return "Lunas";
+  if (!raw) return "";
+  if (raw === "lunas" || raw === "sudah lunas" || raw === "paid" || raw === "sudah bayar") return "Lunas";
+  if (raw === "belum" || raw === "belum lunas" || raw === "unpaid" || raw === "belum bayar") return "Belum";
+  if (raw === "tidak berbayar" || raw === "non paid" || raw === "non-paid" || raw === "gratis" || raw === "free" || raw === "barter" || raw === "kolaborasi" || raw === "collab") return "Tidak Berbayar";
   return "Belum";
 }
 
@@ -114,7 +117,7 @@ function normalizeStatusProduksiValue(value) {
 
 function isPaymentStatusValue(value) {
   var raw = String(value || "").trim().toLowerCase();
-  return raw === "lunas" || raw === "belum" || raw === "sudah lunas" || raw === "belum lunas";
+  return raw === "lunas" || raw === "belum" || raw === "sudah lunas" || raw === "belum lunas" || raw === "paid" || raw === "unpaid" || raw === "sudah bayar" || raw === "belum bayar" || raw === "tidak berbayar" || raw === "non paid" || raw === "non-paid" || raw === "gratis" || raw === "free" || raw === "barter" || raw === "kolaborasi" || raw === "collab";
 }
 
 function isProductionStatusValue(value) {
@@ -352,6 +355,18 @@ function handleRequest(e) {
           
           if (briefUrl) values[colIndex(KLIEN_COLS.LINK_BRIEF)] = briefUrl;
           if (mouUrl) values[colIndex(KLIEN_COLS.LINK_MOU)] = mouUrl;
+        }
+
+        var currentAF = values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)];
+        var currentZ = values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)];
+
+        if (isPaymentStatusValue(currentAF)) {
+          if (!String(currentZ || "").trim()) {
+            values[colIndex(KLIEN_COLS.STATUS_PELUNASAN)] = normalizeStatusPelunasanValue(currentAF);
+          }
+          values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = "";
+        } else if (isProductionStatusValue(currentAF)) {
+          values[colIndex(KLIEN_COLS.LINK_HASIL_FINAL)] = "";
         }
 
         // Tulis semua update ke sheet klien secara sekaligus
